@@ -1,0 +1,79 @@
+name: DyRTP
+version: ${version}
+main: dev.dyrtp.DyRTP
+api-version: '1.20'
+description: Fast random teleport plugin with land-protection integration and EN/TR language support.
+author: DyPlugin
+website: https://github.com/DyPlugin/DyRTP
+softdepend:
+  - DyClaim
+  - Vault
+  - WorldGuard
+  - GriefPrevention
+  - Towny
+  - Lands
+  - Residence
+  - GriefDefender
+  - RedProtect
+  - Factions
+  - FactionsUUID
+  - SaberFactions
+  - FactionsBridge
+  - Kingdoms
+  - hClaims
+  - HuskClaims
+  - HuskTowns
+  - UltimateClaims
+  - Pueblos
+  - CrashClaim
+  - ProtectionStones
+  - PlotSquared
+  - MinePlots
+  - BentoBox
+  - SuperiorSkyblock2
+  - ClaimChunk
+  - GriefPreventionFlags
+
+commands:
+  dyrtp:
+    description: DyRTP commands
+    usage: /<command> [subcommand]
+    aliases:
+      - rtp
+      - randomtp
+      - wild
+      - wildtp
+      - rastgeletp
+      - rastgeleteleport
+  onayla:
+    description: Confirm a pending DyRTP teleport
+    usage: /<command>
+    aliases:
+      - confirm
+  reddet:
+    description: Cancel a pending DyRTP teleport
+    usage: /<command>
+    aliases:
+      - cancel
+  forcertp:
+    description: Force a player to use DyRTP
+    usage: /<command> <player>
+    aliases:
+      - rtpforce
+
+permissions:
+  dyrtp.use:
+    description: Allows using random teleport.
+    default: true
+  dyrtp.admin:
+    description: Allows using admin commands.
+    default: op
+  dyrtp.bypass.cooldown:
+    description: Bypass RTP cooldown.
+    default: op
+  dyrtp.bypass.warmup:
+    description: Bypass RTP warmup.
+    default: op
+  dyrtp.bypass.economy:
+    description: Bypass RTP cost.
+    default: op

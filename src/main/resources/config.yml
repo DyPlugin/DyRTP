@@ -1,0 +1,214 @@
+# Main display prefix. Color codes use the Bukkit '&' format.
+prefix: '&7[&9DyRTP&7]'
+config-version: 8
+
+language:
+  # Default language used for console and players without a saved choice.
+  # Available: auto, en, tr
+  default: auto
+  # If enabled, DyRTP picks Turkish for players whose Minecraft locale starts with tr_.
+  use-player-locale: true
+  # If enabled, /dyrtp language saves the player's choice in players.yml.
+  save-player-choice: true
+  # If enabled, help and tab completions prefer the player's active language.
+  localized-commands: true
+
+rtp:
+  enabled: true
+  # Worlds listed here cannot use normal /rtp unless an override is configured below.
+  disabled-worlds: []
+  # Redirect RTP requests from one world to another.
+  # Format: from_world: to_world
+  world-overrides: {}
+  default-world:
+    use-world-border: false
+    center-x: 0
+    center-z: 0
+    min-radius: 500
+    max-radius: 5000
+    shape: square
+    min-y: -64
+    max-y: 320
+    # Empty list means all biomes are allowed.
+    allowed-biomes: []
+  # Optional per-world overrides. Missing values fall back to default-world.
+  worlds: {}
+  # Example:
+  # worlds:
+  #   survival:
+  #     max-radius: 10000
+  #     min-radius: 250
+  #     shape: circle
+  search:
+    # Higher values find locations faster but do more work per request.
+    max-attempts: 240
+    # Number of candidates checked together. Higher values are faster but busier.
+    batch-size: 32
+    # If the candidate chunk is already loaded, DyRTP checks it immediately instead of queueing an async load.
+    prefer-loaded-chunks: true
+    # Load candidate chunks before checking the final surface.
+    load-chunks: true
+    # Paper/Purpur async chunk loading is used when available; Spigot falls back safely.
+    prefer-async-chunks: true
+    # Preload nearby chunks after a valid location is found. 0 disables it.
+    preload-radius: 1
+    # If true, DyRTP waits for nearby preload chunks before teleporting.
+    # Disable this for faster RTP; the target chunk is still loaded before teleporting.
+    wait-for-preload: false
+  safety:
+    # If true, normal worlds only use the real outdoor surface and never scan down into caves.
+    surface-only: true
+    # If true, stone/solid blocks above the player reject the location. Leaves are allowed.
+    require-natural-sky-access: true
+    # Reject locations too close to the player's current position. 0 disables it.
+    min-distance-from-current: 250
+    # Optional ravine/steep-hole check. 0 keeps RTP fast; raise to 1-2 for stricter terrain checks.
+    nearby-surface-radius: 0
+    max-nearby-surface-drop: 8
+    # Blocks players should never land on.
+    blacklisted-blocks:
+      - WATER
+      - LAVA
+      - FIRE
+      - CACTUS
+      - MAGMA_BLOCK
+      - CAMPFIRE
+      - SOUL_CAMPFIRE
+      - POWDER_SNOW
+      - SNOW
+      - COBWEB
+      - SWEET_BERRY_BUSH
+      - OAK_LEAVES
+      - SPRUCE_LEAVES
+      - BIRCH_LEAVES
+      - JUNGLE_LEAVES
+      - ACACIA_LEAVES
+      - DARK_OAK_LEAVES
+      - MANGROVE_LEAVES
+      - CHERRY_LEAVES
+      - AZALEA_LEAVES
+      - FLOWERING_AZALEA_LEAVES
+      - BEDROCK
+      - VOID_AIR
+    # Biomes players should never be teleported into. This blocks ocean spawns even if the sea floor is technically solid.
+    blacklisted-biomes:
+      - OCEAN
+      - DEEP_OCEAN
+      - COLD_OCEAN
+      - DEEP_COLD_OCEAN
+      - FROZEN_OCEAN
+      - DEEP_FROZEN_OCEAN
+      - LUKEWARM_OCEAN
+      - DEEP_LUKEWARM_OCEAN
+      - WARM_OCEAN
+    # If true, players must have two free blocks above the landing block.
+    require-head-room: true
+
+warmup:
+  # Optional delay before teleporting.
+  enabled: true
+  seconds: 3
+  cancel-on-move: true
+  cancel-on-damage: true
+
+cooldown:
+  enabled: false
+  seconds: 300
+  per-world: false
+
+economy:
+  # Requires Vault plus an economy provider.
+  enabled: false
+  # Default teleport price used when paid RTP is enabled without a custom price.
+  cost: 100.0
+  charge-on-success-only: true
+  # If enabled, paid teleports require clickable confirmation before searching.
+  confirmation:
+    enabled: true
+    timeout-seconds: 30
+
+first-join-rtp:
+  enabled: false
+  delay-seconds: 2
+  set-as-respawn: false
+  ignore-cooldown: true
+  ignore-economy: true
+
+death-rtp:
+  enabled: false
+  # If true, death RTP is skipped when the respawn was a bed or respawn anchor.
+  skip-if-bed-or-anchor: true
+  delay-ticks: 5
+  ignore-cooldown: true
+  ignore-economy: true
+
+feedback:
+  chat:
+    enabled: true
+  actionbar:
+    enabled: false
+  titles:
+    enabled: true
+    fade-in: 10
+    stay: 40
+    fade-out: 10
+  sounds:
+    enabled: true
+    # Common sound examples: ENTITY_CREEPER_PRIMED, ENTITY_ENDERMAN_TELEPORT, BLOCK_NOTE_BLOCK_PLING
+    warmup: ENTITY_CREEPER_PRIMED
+    success: ENTITY_ENDERMAN_TELEPORT
+    failed: BLOCK_NOTE_BLOCK_BASS
+    cancel: BLOCK_ANVIL_LAND
+    volume: 1.0
+    pitch: 1.0
+  effects:
+    blindness:
+      enabled: true
+      amplifier: 0
+
+protection:
+  enabled: true
+  # If enabled, a hook error rejects the location instead of ignoring that hook.
+  fail-closed: false
+  # Extra chunks around chunk-based claims to avoid teleporting right on borders.
+  claim-buffer-chunks: 0
+  hooks:
+    DyClaim: true
+    WorldGuard: true
+    GriefPrevention: true
+    Towny: true
+    Lands: true
+    Residence: true
+    GriefDefender: true
+    RedProtect: true
+    Factions: true
+    FactionsUUID: true
+    SaberFactions: true
+    FactionsBridge: true
+    Kingdoms: true
+    hClaims: true
+    HuskClaims: true
+    HuskTowns: true
+    UltimateClaims: true
+    Pueblos: true
+    CrashClaim: true
+    ProtectionStones: true
+    PlotSquared: true
+    MinePlots: true
+    BentoBox: true
+    SuperiorSkyblock2: true
+    ClaimChunk: true
+    GriefPreventionFlags: true
+  custom-reflection-hooks:
+    enabled: false
+    # This is for small/unknown protection plugins that expose a simple Location method.
+    # The method must accept org.bukkit.Location and return boolean.
+    hooks: []
+    # Example:
+    # hooks:
+    #   - id: ExampleClaims
+    #     plugin-name: ExampleClaims
+    #     class: com.example.claims.ExampleClaimsApi
+    #     static-accessor: getInstance
+    #     method: isClaimed
+    #     claimed-when-result-is: true

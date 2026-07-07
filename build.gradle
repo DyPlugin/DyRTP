@@ -1,0 +1,39 @@
+plugins {
+    id 'java'
+}
+
+group = 'dev.dyrtp'
+version = '1.0.0-Beta'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.purpurmc.org/snapshots' }
+    maven { url = 'https://jitpack.io' }
+}
+
+dependencies {
+    compileOnly 'org.purpurmc.purpur:purpur-api:1.20.4-R0.1-SNAPSHOT'
+    compileOnly 'com.github.MilkBowl:VaultAPI:1.7.1'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release.set(17)
+}
+
+tasks.jar {
+    archiveBaseName.set('DyRTP')
+    archiveVersion.set('v' + version)
+}
+
+processResources {
+    filteringCharset = 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand('version': version)
+    }
+}
