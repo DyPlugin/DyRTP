@@ -35,11 +35,15 @@ public class DyRTP extends JavaPlugin {
         instance = this;
 
         saveDefaultConfig();
+        if (!validateFiles()) {
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         getConfig().options().copyDefaults(true);
         applyConfigUpgrades();
         saveConfig();
-        saveResource("messages_en.yml", false);
-        saveResource("messages_tr.yml", false);
+        if (!new File(getDataFolder(), "messages_en.yml").exists()) saveResource("messages_en.yml", false);
+        if (!new File(getDataFolder(), "messages_tr.yml").exists()) saveResource("messages_tr.yml", false);
         ensureMessageDefaults("messages_en.yml");
         ensureMessageDefaults("messages_tr.yml");
 
@@ -90,8 +94,14 @@ public class DyRTP extends JavaPlugin {
         getLogger().info("DyRTP disabled.");
     }
 
-    public void reloadPlugin() {
+    public void reloadPlugin() { tryReloadPlugin(); }
+
+    public boolean tryReloadPlugin() {
+        if (!validateFiles()) return false;
+        // Invalidate requests before services or hook references change.
+        rtpService.cancelAll();
         reloadConfig();
+        getConfig().options().copyDefaults(true);
         applyConfigUpgrades();
         saveConfig();
         ensureMessageDefaults("messages_en.yml");
@@ -103,6 +113,47 @@ public class DyRTP extends JavaPlugin {
         rtpService.reload();
         if (updateChecker != null) {
             updateChecker.reload();
+        }
+        return true;
+    }
+
+    public boolean applyConfigChanges(java.util.Map<String, Object> changes) {
+        try {
+            // Stage changes separately; a rejected edit must not alter getConfig().
+            YamlConfiguration staged = new YamlConfiguration();
+            staged.loadFromString(getConfig().saveToString());
+            changes.forEach(staged::set);
+            ConfigValidator.validate(staged);
+            if (!validateFiles()) return false;
+            java.nio.file.Path destination = new File(getDataFolder(), "config.yml").toPath();
+            java.nio.file.Path temporary = destination.resolveSibling("config.yml.tmp");
+            staged.save(temporary.toFile());
+            try {
+                java.nio.file.Files.move(temporary, destination, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException exception) {
+                java.nio.file.Files.move(temporary, destination, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            return tryReloadPlugin();
+        } catch (Exception exception) {
+            getLogger().warning("Setting change rejected; running settings retained: " + exception.getMessage());
+            return false;
+        }
+    }
+
+    private boolean validateFiles() {
+        try {
+            YamlConfiguration staged = new YamlConfiguration();
+            staged.load(new File(getDataFolder(), "config.yml"));
+            ConfigValidator.validate(staged);
+            for (String name : new String[]{"messages_en.yml", "messages_tr.yml", "players.yml"}) {
+                File file = new File(getDataFolder(), name);
+                if (file.exists()) new YamlConfiguration().load(file);
+            }
+            return true;
+        } catch (Exception exception) {
+            getLogger().warning("Configuration rejected; running settings retained: " + exception.getMessage());
+            return false;
         }
     }
 
@@ -131,28 +182,12 @@ public class DyRTP extends JavaPlugin {
     }
 
     private void applyConfigUpgrades() {
-        int version = getConfig().getInt("config-version", 0);
-        if (version < 6) {
-            getConfig().set("config-version", 6);
-        }
-        if (version < 7) {
-            if ("&7[&dDyRTP&7]".equals(getConfig().getString("prefix"))) {
-                getConfig().set("prefix", "&7[&9DyRTP&7]");
+        if (getConfig().getInt("config-version", 0) < 9) {
+            String prefix = getConfig().getString("prefix");
+            if ("&7[&9DyRTP&7]".equals(prefix) || "&7[&dDyRTP&7]".equals(prefix)) {
+                getConfig().set("prefix", "&7[&aDyRTP&7]");
             }
-            getConfig().set("config-version", 7);
-        }
-        if (version < 8) {
-            upgradeDefaultInt("rtp.search.max-attempts", 120, 240);
-            upgradeDefaultInt("rtp.search.batch-size", 16, 32);
-            upgradeDefaultInt("rtp.search.preload-radius", 2, 1);
-            getConfig().set("config-version", 8);
-        }
-        getConfig().set("updates", null);
-    }
-
-    private void upgradeDefaultInt(String path, int oldDefault, int newDefault) {
-        if (getConfig().getInt(path, oldDefault) == oldDefault) {
-            getConfig().set(path, newDefault);
+            getConfig().set("config-version", 9);
         }
     }
 
@@ -166,7 +201,8 @@ public class DyRTP extends JavaPlugin {
             if (inputStream == null) {
                 return;
             }
-            YamlConfiguration existing = YamlConfiguration.loadConfiguration(file);
+            YamlConfiguration existing = new YamlConfiguration();
+            existing.load(file);
             YamlConfiguration defaults = YamlConfiguration.loadConfiguration(
                     new InputStreamReader(inputStream, StandardCharsets.UTF_8)
             );
@@ -186,6 +222,7 @@ public class DyRTP extends JavaPlugin {
             if (defaultSection != null) {
                 ConfigurationSection targetSection = target.getConfigurationSection(key);
                 if (targetSection == null) {
+                    if (target.contains(key)) continue;
                     targetSection = target.createSection(key);
                     changed = true;
                 }
@@ -194,6 +231,11 @@ public class DyRTP extends JavaPlugin {
                 }
             } else if (!target.contains(key)) {
                 target.set(key, value);
+                changed = true;
+            } else if (target.get(key) instanceof String existing && value instanceof String text
+                    && existing.contains("&9") && existing.replace("&9", "&a").equals(text)) {
+                // Only migrate unchanged stock text; custom translations keep their formatting.
+                target.set(key, text);
                 changed = true;
             }
         }

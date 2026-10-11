@@ -17,10 +17,13 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ModrinthUpdateChecker {
 
-    private static final Pattern VERSION_PATTERN = Pattern.compile("\"version_number\"\\s*:\\s*\"([^\"]+)\"");
     private static final String PROJECT_SLUG = "dyrtp";
     private static final String PROJECT_URL = "https://modrinth.com/plugin/dyrtp";
     private static final String NOTIFY_PERMISSION = "dyrtp.admin";
@@ -33,6 +36,9 @@ public class ModrinthUpdateChecker {
             .build();
 
     private BukkitTask repeatingTask;
+    private BukkitTask initialTask;
+    private volatile long generation;
+    private final AtomicBoolean checking = new AtomicBoolean();
     private String lastNotifiedVersion = "";
 
     public ModrinthUpdateChecker(DyRTP plugin, MessageService messages) {
@@ -42,8 +48,8 @@ public class ModrinthUpdateChecker {
 
     public void start() {
         cancel();
-        Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, this::check, 60L);
-        repeatingTask = Bukkit.getScheduler().runTaskTimerAsynchronously(
+        initialTask = Bukkit.getScheduler().runTaskLater(plugin, this::check, 60L);
+        repeatingTask = Bukkit.getScheduler().runTaskTimer(
                 plugin,
                 this::check,
                 CHECK_INTERVAL_MINUTES * 60L * 20L,
@@ -56,6 +62,8 @@ public class ModrinthUpdateChecker {
     }
 
     public void cancel() {
+        generation++;
+        if (initialTask != null) { initialTask.cancel(); initialTask = null; }
         if (repeatingTask != null) {
             repeatingTask.cancel();
             repeatingTask = null;
@@ -63,26 +71,37 @@ public class ModrinthUpdateChecker {
     }
 
     private void check() {
-        try {
-            String current = plugin.getDescription().getVersion();
-            Optional<String> latest = fetchLatestVersion();
-            if (latest.isEmpty() || compareVersions(latest.get(), current) <= 0) {
-                return;
-            }
-            if (latest.get().equalsIgnoreCase(lastNotifiedVersion)) {
-                return;
-            }
-            lastNotifiedVersion = latest.get();
-            Bukkit.getScheduler().runTask(plugin, () -> notifyUpdate(current, latest.get()));
-        } catch (Exception exception) {
-            plugin.getLogger().fine("Modrinth update check failed: " + exception.getMessage());
-        }
+        if (!checking.compareAndSet(false, true)) return;
+        String current = plugin.getDescription().getVersion();
+        String game = plugin.getServer().getBukkitVersion().split("-", 2)[0];
+        String name = plugin.getServer().getName().toLowerCase(java.util.Locale.ROOT);
+        String loader = name.contains("purpur") ? "purpur" : name.contains("paper") ? "paper"
+                : name.contains("spigot") ? "spigot" : "bukkit";
+        long requestedGeneration = generation;
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                Optional<Release> latest = fetchLatestVersion(game, loader);
+                if (latest.isEmpty() || compareVersions(latest.get().version(), current) <= 0
+                        || !plugin.isEnabled() || requestedGeneration != generation) return;
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (requestedGeneration != generation || !plugin.isEnabled()) return;
+                    Release release = latest.get();
+                    if (release.version().equalsIgnoreCase(lastNotifiedVersion)) return;
+                    lastNotifiedVersion = release.version();
+                    notifyUpdate(current, release);
+                });
+            } catch (Exception exception) {
+                plugin.getLogger().warning("Modrinth update check failed: " + exception.getMessage());
+            } finally { checking.set(false); }
+        });
     }
 
-    private Optional<String> fetchLatestVersion() throws Exception {
+    private Optional<Release> fetchLatestVersion(String game, String loader) throws Exception {
         String encodedProject = URLEncoder.encode(PROJECT_SLUG, StandardCharsets.UTF_8);
         URI uri = URI.create("https://api.modrinth.com/v2/project/" + encodedProject
-                + "/version?include_changelog=false");
+                + "/version?include_changelog=false&game_versions="
+                + URLEncoder.encode("[\"" + game + "\"]", StandardCharsets.UTF_8)
+                + "&loaders=" + URLEncoder.encode("[\"" + loader + "\"]", StandardCharsets.UTF_8));
         HttpRequest request = HttpRequest.newBuilder(uri)
                 .timeout(Duration.ofSeconds(10))
                 .header("Accept", "application/json")
@@ -92,20 +111,12 @@ public class ModrinthUpdateChecker {
                 .build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            return Optional.empty();
+            throw new java.io.IOException("HTTP " + response.statusCode());
         }
-        Matcher matcher = VERSION_PATTERN.matcher(response.body());
-        String best = null;
-        while (matcher.find()) {
-            String version = unescapeJson(matcher.group(1));
-            if (best == null || compareVersions(version, best) > 0) {
-                best = version;
-            }
-        }
-        return Optional.ofNullable(best);
+        return selectRelease(response.body(), game, loader);
     }
 
-    private void notifyUpdate(String current, String latest) {
+    private void notifyUpdate(String current, Release latest) {
         CommandSender console = Bukkit.getConsoleSender();
         messages.send(console, "updates.available", placeholders(current, latest));
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -115,18 +126,38 @@ public class ModrinthUpdateChecker {
         }
     }
 
-    private static java.util.Map<String, String> placeholders(String current, String latest) {
+    private static java.util.Map<String, String> placeholders(String current, Release latest) {
         return java.util.Map.of(
                 "{current}", current,
-                "{latest}", latest,
-                "{url}", PROJECT_URL
+                "{latest}", latest.version(),
+                "{url}", latest.url()
         );
     }
 
-    private static String unescapeJson(String value) {
-        return value.replace("\\\"", "\"")
-                .replace("\\\\", "\\");
+    static Optional<Release> selectRelease(String json, String game, String loader) {
+        JsonArray versions = JsonParser.parseString(json).getAsJsonArray();
+        Release best = null;
+        for (var element : versions) {
+            JsonObject entry = element.getAsJsonObject();
+            if (!"release".equals(entry.get("version_type").getAsString())
+                    || !contains(entry.getAsJsonArray("game_versions"), game)
+                    || !contains(entry.getAsJsonArray("loaders"), loader)) continue;
+            String version = entry.get("version_number").getAsString();
+            String id = entry.get("id").getAsString();
+            if (!id.matches("[A-Za-z0-9]+")) continue;
+            if (best == null || compareVersions(version, best.version()) > 0)
+                best = new Release(version, PROJECT_URL + "/version/" + id);
+        }
+        return Optional.ofNullable(best);
     }
+
+    private static boolean contains(JsonArray values, String expected) {
+        if (values == null) return false;
+        for (var value : values) if (expected.equals(value.getAsString())) return true;
+        return false;
+    }
+
+    record Release(String version, String url) { }
 
     private static int compareVersions(String left, String right) {
         int[] leftCore = versionCore(left);
@@ -142,15 +173,16 @@ public class ModrinthUpdateChecker {
     }
 
     private static int[] versionCore(String version) {
-        Matcher matcher = Pattern.compile("\\d+").matcher(version);
+        Matcher matcher = Pattern.compile("\\d+").matcher(version.replaceFirst("(?i)^v", "").split("[-+]", 2)[0]);
         int[] parts = new int[4];
         int index = 0;
         while (matcher.find() && index < parts.length) {
             try {
-                parts[index++] = Integer.parseInt(matcher.group());
+                parts[index] = Integer.parseInt(matcher.group());
             } catch (NumberFormatException ignored) {
-                parts[index++] = 0;
+                parts[index] = Integer.MAX_VALUE;
             }
+            index++;
         }
         if (index == parts.length) {
             return parts;

@@ -1,0 +1,8 @@
+plugins { id 'java' }
+repositories { mavenCentral(); maven { url = 'https://repo.purpurmc.org/snapshots' } }
+dependencies {
+    compileOnly 'org.purpurmc.purpur:purpur-api:1.20.4-R0.1-SNAPSHOT'
+    compileOnly files('../../build/libs/DyRTP-v1.0.0.jar')
+}
+java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+jar { archiveFileName = 'DyRTPReviewProbe.jar' }

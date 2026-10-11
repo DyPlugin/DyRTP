@@ -1,0 +1,8 @@
+name: RtpComparisonProbe
+version: 1.0
+main: dev.dyrtp.comparison.ComparisonProbe
+api-version: '1.20'
+softdepend: [DyRTP, BetterRTP]
+commands:
+  rtpcompare:
+    description: Disposable-server comparative measurements

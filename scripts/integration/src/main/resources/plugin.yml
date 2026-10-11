@@ -1,0 +1,8 @@
+name: DyRTPReviewProbe
+version: 1.0
+main: dev.dyrtp.probe.ReviewProbe
+api-version: '1.20'
+depend: [DyRTP, DyClaim]
+commands:
+  dyrtpprobe:
+    description: Isolated review integration checks

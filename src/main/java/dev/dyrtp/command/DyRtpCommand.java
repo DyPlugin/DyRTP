@@ -45,10 +45,10 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (matches(command.getName(), "onayla") || matches(label, "onayla", "confirm")) {
-            return confirm(sender);
+            return confirm(sender, args.length > 0 ? args[0] : null);
         }
         if (matches(command.getName(), "reddet") || matches(label, "reddet", "cancel")) {
-            return reject(sender);
+            return reject(sender, args.length > 0 ? args[0] : null);
         }
         if (matches(command.getName(), "forcertp") || matches(label, "forcertp", "rtpforce")) {
             return forceRtp(sender, args, 0);
@@ -57,6 +57,12 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             return rtp(sender);
         }
 
+        if (matches(args[0], "confirm", "onayla")) {
+            return confirm(sender, args.length > 1 ? args[1] : null);
+        }
+        if (matches(args[0], "cancel", "reddet", "iptal")) {
+            return reject(sender, args.length > 1 ? args[1] : null);
+        }
         if (matches(args[0], "help", "yardım", "yardim")) {
             help(sender);
             return true;
@@ -88,27 +94,43 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private boolean confirm(CommandSender sender) {
+    private boolean confirm(CommandSender sender, String token) {
         if (!(sender instanceof Player player)) {
             messages.send(sender, "general.player-only");
             return true;
         }
-        rtpService.confirm(player);
+        if (!sender.hasPermission("dyrtp.use")) {
+            messages.send(sender, "general.no-permission");
+            return true;
+        }
+        if (token == null) rtpService.confirm(player);
+        else rtpService.confirm(player, token);
         return true;
     }
 
-    private boolean reject(CommandSender sender) {
+    private boolean reject(CommandSender sender, String token) {
         if (!(sender instanceof Player player)) {
             messages.send(sender, "general.player-only");
             return true;
         }
-        rtpService.reject(player);
+        if (token == null) rtpService.reject(player);
+        else rtpService.reject(player, token);
         return true;
     }
 
     private void help(CommandSender sender) {
-        for (String line : messages.getList(sender, "general.help-v4")) {
-            sender.sendMessage(line);
+        messages.send(sender, "general.help-header");
+        messages.send(sender, "general.help-help");
+        if (sender instanceof Player) {
+            if (sender.hasPermission("dyrtp.use")) {
+                messages.send(sender, "general.help-rtp");
+                messages.send(sender, "general.help-confirm");
+            }
+            messages.send(sender, "general.help-cancel");
+            messages.send(sender, "general.help-language");
+        }
+        if (sender.hasPermission("dyrtp.admin")) {
+            messages.send(sender, "general.help-admin");
         }
     }
 
@@ -125,6 +147,9 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         }
 
         String sub = normalize(args[1]);
+        if (matches(sub, "force", "zorla", "forcertp", "rtpforce")) {
+            return forceRtp(sender, args, 2);
+        }
         if (matches(sub, "reload", "yenile")) {
             return reload(sender);
         }
@@ -162,8 +187,11 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             messages.send(sender, "general.no-permission");
             return true;
         }
-        plugin.reloadPlugin();
-        messages.send(sender, "general.reload");
+        if (plugin.tryReloadPlugin()) {
+            messages.send(sender, "general.reload");
+        } else {
+            messages.send(sender, "general.reload-failed");
+        }
         return true;
     }
 
@@ -218,10 +246,9 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             messages.send(sender, "general.invalid-language");
             return true;
         }
-        plugin.getConfig().set("language.default", language);
-        plugin.getConfig().set("language.use-player-locale", language.equals("auto"));
-        plugin.saveConfig();
-        plugin.reloadPlugin();
+        if (!applyChanges(sender, Map.of("language.default", language, "language.use-player-locale", language.equals("auto")))) {
+            return true;
+        }
         messages.send(sender, "admin.global-language-changed", Map.of("{language}", displayLanguage(sender, language)));
         return true;
     }
@@ -248,7 +275,11 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         try {
-            int value = Math.max(0, Integer.parseInt(args[valueIndex]));
+            int value = Integer.parseInt(args[valueIndex]);
+            if (value < 0 || value > 29_999_984) {
+                messages.send(sender, "general.invalid-value");
+                return true;
+            }
             int min = plugin.getConfig().getInt("rtp.default-world.min-radius", 500);
             int max = plugin.getConfig().getInt("rtp.default-world.max-radius", 5000);
             if (path.endsWith("min-radius")) {
@@ -256,13 +287,13 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
                     messages.send(sender, "general.invalid-value");
                     return true;
                 }
-            } else if (value <= min) {
+            } else if (value <= min
+                    || Math.abs(plugin.getConfig().getDouble("rtp.default-world.center-x", 0)) + value > 30_000_000
+                    || Math.abs(plugin.getConfig().getDouble("rtp.default-world.center-z", 0)) + value > 30_000_000) {
                 messages.send(sender, "general.invalid-value");
                 return true;
             }
-            plugin.getConfig().set(path, value);
-            plugin.saveConfig();
-            plugin.reloadPlugin();
+            if (!applyChanges(sender, Map.of(path, value))) return true;
             updated(sender, path, value);
         } catch (NumberFormatException e) {
             messages.send(sender, "general.invalid-value");
@@ -277,13 +308,11 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         }
         Boolean bool = parseBoolean(args[2]);
         if (bool != null) {
-            plugin.getConfig().set("economy.enabled", bool);
             boolean defaultPriceApplied = bool && plugin.getConfig().getDouble("economy.cost", 0.0D) <= 0.0D;
-            if (defaultPriceApplied) {
-                plugin.getConfig().set("economy.cost", 100.0D);
-            }
-            plugin.saveConfig();
-            plugin.reloadPlugin();
+            Map<String, Object> changes = new java.util.HashMap<>();
+            changes.put("economy.enabled", bool);
+            if (defaultPriceApplied) changes.put("economy.cost", 100.0D);
+            if (!applyChanges(sender, changes)) return true;
             updated(sender, "economy.enabled", bool);
             if (defaultPriceApplied) {
                 updated(sender, "economy.cost", 100.0D);
@@ -291,11 +320,12 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         try {
-            double cost = Math.max(0.0D, Double.parseDouble(args[2].replace(',', '.')));
-            plugin.getConfig().set("economy.cost", cost);
-            plugin.getConfig().set("economy.enabled", cost > 0.0D);
-            plugin.saveConfig();
-            plugin.reloadPlugin();
+            double cost = Double.parseDouble(args[2].replace(',', '.'));
+            if (!Double.isFinite(cost) || cost < 0) {
+                messages.send(sender, "general.invalid-value");
+                return true;
+            }
+            if (!applyChanges(sender, Map.of("economy.cost", cost, "economy.enabled", cost > 0.0D))) return true;
             updated(sender, "economy.cost", cost);
         } catch (NumberFormatException e) {
             messages.send(sender, "general.invalid-value");
@@ -309,11 +339,12 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         try {
-            double cost = Math.max(0.0D, Double.parseDouble(args[2].replace(',', '.')));
-            plugin.getConfig().set("economy.cost", cost);
-            plugin.getConfig().set("economy.enabled", cost > 0.0D);
-            plugin.saveConfig();
-            plugin.reloadPlugin();
+            double cost = Double.parseDouble(args[2].replace(',', '.'));
+            if (!Double.isFinite(cost) || cost < 0) {
+                messages.send(sender, "general.invalid-value");
+                return true;
+            }
+            if (!applyChanges(sender, Map.of("economy.cost", cost, "economy.enabled", cost > 0.0D))) return true;
             updated(sender, "economy.cost", cost);
         } catch (NumberFormatException e) {
             messages.send(sender, "general.invalid-value");
@@ -327,20 +358,25 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         Boolean bool = parseBoolean(args[2]);
+        Map<String, Object> changes = new java.util.HashMap<>();
         Object shown;
         String path;
         if (bool != null) {
-            plugin.getConfig().set(enabledPath, bool);
+            changes.put(enabledPath, bool);
             if (bool && plugin.getConfig().getInt(secondsPath, 0) <= 0) {
-                plugin.getConfig().set(secondsPath, 3);
+                changes.put(secondsPath, 3);
             }
             shown = bool;
             path = enabledPath;
         } else {
             try {
-                int seconds = Math.max(0, Integer.parseInt(args[2]));
-                plugin.getConfig().set(secondsPath, seconds);
-                plugin.getConfig().set(enabledPath, seconds > 0);
+                int seconds = Integer.parseInt(args[2]);
+                if (seconds < 0 || (secondsPath.equals("warmup.seconds") && seconds > 86_400)) {
+                    messages.send(sender, "general.invalid-value");
+                    return true;
+                }
+                changes.put(secondsPath, seconds);
+                changes.put(enabledPath, seconds > 0);
                 if (seconds > 0) {
                     shown = seconds + "s";
                     path = secondsPath;
@@ -353,10 +389,15 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
         }
-        plugin.saveConfig();
-        plugin.reloadPlugin();
+        if (!applyChanges(sender, changes)) return true;
         updated(sender, path, shown);
         return true;
+    }
+
+    private boolean applyChanges(CommandSender sender, Map<String, Object> changes) {
+        if (plugin.applyConfigChanges(changes)) return true;
+        messages.send(sender, "general.reload-failed");
+        return false;
     }
 
     private void updated(CommandSender sender, String path, Object value) {
@@ -375,22 +416,39 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         boolean tr = messages.language(sender) == Language.TR;
         if (args.length == 1) {
             if (matches(command.getName(), "forcertp")) {
+                if (!sender.hasPermission("dyrtp.admin")) return List.of();
                 return startsWith(args[0], Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());
             }
-            return startsWith(args[0], tr
-                    ? List.of("yardım", "dil", "yenile", "yönetim")
-                    : List.of("help", "language", "reload", "admin"));
+            if (matches(command.getName(), "onayla", "reddet")) return List.of();
+            List<String> words = new ArrayList<>();
+            words.add(tr ? "yardım" : "help");
+            if (sender instanceof Player) {
+                words.add(tr ? "dil" : "language");
+                words.add(tr ? "reddet" : "cancel");
+                if (sender.hasPermission("dyrtp.use")) {
+                    words.add(tr ? "ışınlan" : "rtp");
+                    words.add(tr ? "onayla" : "confirm");
+                }
+            }
+            if (sender.hasPermission("dyrtp.admin")) words.add("admin");
+            return startsWith(args[0], words);
         }
         if (args.length == 2 && matches(args[0], "language", "lang", "dil")) {
-            return startsWith(args[1], List.of("auto", "en", "tr"));
+            return sender instanceof Player
+                    ? startsWith(args[1], tr ? List.of("otomatik", "en", "tr") : List.of("auto", "en", "tr"))
+                    : List.of();
         }
-        if (!matches(args[0], "admin", "yönetim", "yonetim")) {
+        if (args.length == 0 || !sender.hasPermission("dyrtp.admin")
+                || !matches(args[0], "admin", "yönetim", "yonetim")) {
             return List.of();
         }
         if (args.length == 2) {
             return startsWith(args[1], tr
-                    ? List.of("yenile", "dil", "ekonomi", "fiyat", "bekleme", "gecikme", "sınır")
-                    : List.of("reload", "language", "economy", "price", "cooldown", "delay", "radius"));
+                    ? List.of("yardım", "yenile", "dil", "ekonomi", "fiyat", "bekleme", "gecikme", "sınır", "zorla")
+                    : List.of("help", "reload", "language", "economy", "price", "cooldown", "delay", "radius", "force"));
+        }
+        if (args.length == 3 && matches(args[1], "force", "zorla", "forcertp", "rtpforce")) {
+            return startsWith(args[2], Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());
         }
         if (args.length == 3 && matches(args[1], "language", "lang", "dil")) {
             return startsWith(args[2], tr ? List.of("otomatik", "en", "tr") : List.of("auto", "en", "tr"));
@@ -450,32 +508,7 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         if (exact != null) {
             return exact;
         }
-        Player partial = Bukkit.getPlayer(input);
-        if (partial != null) {
-            return partial;
-        }
-        String normalizedInput = normalizePlayerName(input);
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            String normalizedPlayer = normalizePlayerName(player.getName());
-            if (normalizedPlayer.equals(normalizedInput)
-                    || normalizedPlayer.endsWith(normalizedInput)
-                    || normalizedInput.endsWith(normalizedPlayer)) {
-                return player;
-            }
-        }
         return null;
-    }
-
-    private static String normalizePlayerName(String value) {
-        String lower = value == null ? "" : value.toLowerCase(Locale.ROOT);
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < lower.length(); i++) {
-            char character = lower.charAt(i);
-            if (Character.isLetterOrDigit(character)) {
-                builder.append(character);
-            }
-        }
-        return builder.toString();
     }
 
     private static List<String> startsWith(String input, List<String> values) {

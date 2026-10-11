@@ -25,6 +25,17 @@ import java.util.Map;
 
 public class ProtectionService {
 
+    private static long nextDyClaimWarning;
+
+    static synchronized void logDyClaimFailure(DyRTP plugin, Exception cause) {
+        long now = System.currentTimeMillis();
+        if (now >= nextDyClaimWarning) {
+            nextDyClaimWarning = now + 60_000L;
+            plugin.getLogger().warning("DyClaim protection check failed; RTP stopped safely. "
+                    + cause.getClass().getSimpleName() + ": " + cause.getMessage());
+        }
+    }
+
     private final DyRTP plugin;
     private final List<ProtectionHook> hooks = new ArrayList<>();
 
@@ -78,7 +89,9 @@ public class ProtectionService {
         }
         List<ProtectionHook> activeHooks = new ArrayList<>();
         for (ProtectionHook hook : hooks) {
-            if (!enabled(hook) || !hook.available()) {
+            boolean installedDyClaim = "DyClaim".equals(hook.id())
+                    && plugin.getServer().getPluginManager().getPlugin("DyClaim") != null;
+            if (!enabled(hook) || (!hook.available() && !installedDyClaim)) {
                 continue;
             }
             activeHooks.add(hook);

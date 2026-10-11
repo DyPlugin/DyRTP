@@ -11,6 +11,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class LocationFinder {
 
@@ -18,6 +21,7 @@ public class LocationFinder {
     private final ProtectionService protection;
     private final ChunkLoader chunkLoader;
     private final SafeLocationChecker safeLocationChecker;
+    private final Set<CompletableFuture<SearchResult>> searches = ConcurrentHashMap.newKeySet();
 
     public LocationFinder(DyRTP plugin, ProtectionService protection) {
         this.plugin = plugin;
@@ -28,23 +32,75 @@ public class LocationFinder {
 
     public CompletableFuture<SearchResult> find(World world, Location origin) {
         CompletableFuture<SearchResult> future = new CompletableFuture<>();
-        WorldProfile profile = WorldProfile.load(plugin, world);
-        SearchState state = new SearchState(profile, SafetyRules.load(plugin, profile), protection.snapshot(), origin, future);
-        runMain(() -> attemptBatch(state));
+        runMain(() -> {
+            try {
+                int maximum = Math.max(1, Math.min(64, plugin.getConfig().getInt("rtp.search.max-concurrent-searches", 16)));
+                if (searches.size() >= maximum || !plugin.isEnabled()) {
+                    future.complete(new SearchResult(null, 0));
+                    return;
+                }
+                searches.add(future);
+                future.whenComplete((result, error) -> searches.remove(future));
+                WorldProfile profile = WorldProfile.load(plugin, world);
+                SearchState state = new SearchState(profile, SafetyRules.load(plugin, profile), protection.snapshot(), origin, future);
+                long timeout = Math.max(1, Math.min(300, plugin.getConfig().getLong("rtp.search.timeout-seconds", 30)));
+                future.orTimeout(timeout, TimeUnit.SECONDS);
+                attemptSafely(state);
+            } catch (RuntimeException error) {
+                future.completeExceptionally(error);
+            }
+        });
         return future;
     }
 
+    /** Fresh checks on the server thread; never trusts the search's claim cache. */
+    public boolean isSafeNow(Location target, Location origin) {
+        if (!Bukkit.isPrimaryThread() || target == null || target.getWorld() == null) {
+            return false;
+        }
+        try {
+            World world = target.getWorld();
+            if (plugin.getConfig().getStringList("rtp.disabled-worlds").contains(world.getName())) return false;
+            if (!world.isChunkLoaded(target.getBlockX() >> 4, target.getBlockZ() >> 4)) {
+                return false;
+            }
+            WorldProfile profile = WorldProfile.load(plugin, world);
+            SafetyRules rules = SafetyRules.load(plugin, profile);
+            if (!safeLocationChecker.isSafeAt(profile, rules, target) || protection.isLocationProtected(target)) {
+                return false;
+            }
+            if (origin != null && world.equals(origin.getWorld())) {
+                double dx = target.getX() - origin.getX();
+                double dz = target.getZ() - origin.getZ();
+                if (dx * dx + dz * dz < (double) rules.minDistanceFromCurrent() * rules.minDistanceFromCurrent()) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (RuntimeException error) {
+            return false;
+        }
+    }
+
+    private void attemptSafely(SearchState state) {
+        try {
+            attemptBatch(state);
+        } catch (RuntimeException error) {
+            state.future.completeExceptionally(error);
+        }
+    }
+
     private void attemptBatch(SearchState state) {
-        if (state.future.isDone()) {
+        if (state.future.isDone() || state.completing || state.inFlight > 0 || !plugin.isEnabled()) {
             return;
         }
 
         int maxAttempts = Math.max(1, plugin.getConfig().getInt("rtp.search.max-attempts", 160));
-        int batchSize = Math.max(1, plugin.getConfig().getInt("rtp.search.batch-size", 24));
+        int batchSize = Math.max(1, Math.min(64, plugin.getConfig().getInt("rtp.search.batch-size", 24)));
         boolean preferLoadedChunks = plugin.getConfig().getBoolean("rtp.search.prefer-loaded-chunks", true);
         int launched = 0;
 
-        while (launched < batchSize && state.attempts < maxAttempts) {
+        while (launched < batchSize && state.attempts < maxAttempts && !state.future.isDone() && !state.completing) {
             if (state.attempts >= maxAttempts) {
                 state.future.complete(new SearchResult(null, state.attempts));
                 return;
@@ -52,15 +108,20 @@ public class LocationFinder {
 
             Candidate candidate = candidate(state.profile);
             state.attempts++;
+            launched++;
             int chunkX = candidate.x >> 4;
             int chunkZ = candidate.z >> 4;
+
+            if (!state.profile.world().getWorldBorder().isInside(
+                    new Location(state.profile.world(), candidate.x + 0.5D, 64, candidate.z + 0.5D))) {
+                continue;
+            }
 
             if (chunkProtected(state, chunkX, chunkZ)) {
                 continue;
             }
 
             if (preferLoadedChunks && state.profile.world().isChunkLoaded(chunkX, chunkZ)) {
-                launched++;
                 Location safe = checkCandidate(state, candidate);
                 if (safe != null) {
                     completeFound(state, safe);
@@ -69,25 +130,31 @@ public class LocationFinder {
                 continue;
             }
 
-            launched++;
             state.inFlight++;
             chunkLoader.load(state.profile.world(), chunkX, chunkZ).whenComplete((chunk, throwable) ->
                     runMain(() -> {
                         state.inFlight--;
-                        if (state.future.isDone()) {
+                        if (state.future.isDone() || state.completing || !plugin.isEnabled()) {
                             return;
                         }
                         if (throwable != null) {
                             continueSearch(state, maxAttempts);
                             return;
                         }
-                        Location safe = checkCandidate(state, candidate);
-                        if (safe != null) {
-                            completeFound(state, safe);
-                        } else {
-                            continueSearch(state, maxAttempts);
+                        try {
+                            Location safe = checkCandidate(state, candidate);
+                            if (safe != null) {
+                                completeFound(state, safe);
+                            } else {
+                                continueSearch(state, maxAttempts);
+                            }
+                        } catch (RuntimeException error) {
+                            state.future.completeExceptionally(error);
                         }
                     }));
+            // Check this candidate before generating another chunk. The batch budget
+            // still bounds cheap checks of loaded or rejected candidates per tick.
+            return;
         }
 
         if (state.inFlight == 0) {
@@ -103,7 +170,7 @@ public class LocationFinder {
             state.future.complete(new SearchResult(null, state.attempts));
             return;
         }
-        runMain(() -> attemptBatch(state));
+        plugin.getServer().getScheduler().runTask(plugin, () -> attemptSafely(state));
     }
 
     private Location checkCandidate(SearchState state, Candidate candidate) {
@@ -115,6 +182,7 @@ public class LocationFinder {
     }
 
     private void completeFound(SearchState state, Location safe) {
+        state.completing = true;
         boolean waitForPreload = plugin.getConfig().getBoolean("rtp.search.wait-for-preload", false);
         if (!waitForPreload) {
             state.future.complete(new SearchResult(safe, state.attempts));
@@ -235,6 +303,7 @@ public class LocationFinder {
         private final Map<Long, Boolean> chunkProtectionCache = new HashMap<>();
         private int attempts;
         private int inFlight;
+        private boolean completing;
 
         private SearchState(WorldProfile profile, SafetyRules rules, ProtectionSnapshot protection, Location origin, CompletableFuture<SearchResult> future) {
             this.profile = profile;

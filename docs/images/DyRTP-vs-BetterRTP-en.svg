@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1680" viewBox="0 0 2000 1680">
+<title>DyRTP versus BetterRTP: median command-to-teleport time</title>
+<desc>Five matched-setting samples on Paper 26.3. 70 successful requests per plugin. Lower is faster. One client; protection and queue disabled; not CPU or RAM usage.</desc>
+<rect width="2000" height="1680" fill="#f4f2ed"/>
+<text x="150" y="80" fill="#18191b" font-family="Arial, sans-serif" font-size="68" font-weight="700" dominant-baseline="text-before-edge" text-anchor="start">DyRTP</text>
+<text x="1850" y="104" fill="#686862" font-family="Arial, sans-serif" font-size="26" font-weight="400" dominant-baseline="text-before-edge" text-anchor="end">2 PLUGINS · 70 RTPs EACH</text>
+<text x="150" y="254" fill="#18191b" font-family="Arial, sans-serif" font-size="68" font-weight="700" dominant-baseline="text-before-edge" text-anchor="start">Same settings. Measured RTP.</text>
+<text x="150" y="356" fill="#248b46" font-family="Arial, sans-serif" font-size="64" font-weight="700" dominant-baseline="text-before-edge" text-anchor="start">Lower median time in these samples.</text>
+<text x="150" y="454" fill="#686862" font-family="Arial, sans-serif" font-size="34" font-weight="400" dominant-baseline="text-before-edge" text-anchor="start">Command-to-teleport time. Lower is faster.</text>
+<rect x="150" y="523" width="26.000" height="26" fill="#248b46"/>
+<text x="190" y="518" fill="#18191b" font-family="Arial, sans-serif" font-size="30" font-weight="700" dominant-baseline="text-before-edge" text-anchor="start">DyRTP 1.0.0</text>
+<rect x="515" y="523" width="26.000" height="26" fill="#aaa8a0"/>
+<text x="555" y="518" fill="#18191b" font-family="Arial, sans-serif" font-size="30" font-weight="400" dominant-baseline="text-before-edge" text-anchor="start">BetterRTP 3.6.13</text>
+<text x="1850" y="520" fill="#686862" font-family="Arial, sans-serif" font-size="28" font-weight="400" dominant-baseline="text-before-edge" text-anchor="end">MEDIAN · ms</text>
+<text x="150" y="592" fill="#18191b" font-family="Arial, sans-serif" font-size="32" font-weight="700" dominant-baseline="text-before-edge" text-anchor="start">Overworld · 16–96 · first pass</text>
+<text x="1850" y="595" fill="#686862" font-family="Arial, sans-serif" font-size="26" font-weight="400" dominant-baseline="text-before-edge" text-anchor="end">20 RTPs / plugin</text>
+<rect x="150" y="641" width="1450.000" height="24" fill="#e2dfd7"/>
+<rect x="150" y="641" width="13.644" height="24" fill="#248b46"/>
+<text x="1850" y="633" fill="#248b46" font-family="Arial, sans-serif" font-size="34" font-weight="700" dominant-baseline="text-before-edge" text-anchor="end">1.88 ms</text>
+<rect x="150" y="679" width="1450.000" height="24" fill="#e2dfd7"/>
+<rect x="150" y="679" width="729.234" height="24" fill="#aaa8a0"/>
+<text x="1850" y="671" fill="#18191b" font-family="Arial, sans-serif" font-size="34" font-weight="700" dominant-baseline="text-before-edge" text-anchor="end">100.58 ms</text>
+<text x="150" y="736" fill="#18191b" font-family="Arial, sans-serif" font-size="32" font-weight="700" dominant-baseline="text-before-edge" text-anchor="start">Overworld · 16–96 · second pass</text>
+<text x="1850" y="739" fill="#686862" font-family="Arial, sans-serif" font-size="26" font-weight="400" dominant-baseline="text-before-edge" text-anchor="end">20 RTPs / plugin</text>
+<rect x="150" y="785" width="1450.000" height="24" fill="#e2dfd7"/>
+<rect x="150" y="785" width="7.003" height="24" fill="#248b46"/>
+<text x="1850" y="777" fill="#248b46" font-family="Arial, sans-serif" font-size="34" font-weight="700" dominant-baseline="text-before-edge" text-anchor="end">0.97 ms</text>
+<rect x="150" y="823" width="1450.000" height="24" fill="#e2dfd7"/>
+<rect x="150" y="823" width="725.551" height="24" fill="#aaa8a0"/>
+<text x="1850" y="815" fill="#18191b" font-family="Arial, sans-serif" font-size="34" font-weight="700" dominant-baseline="text-before-edge" text-anchor="end">100.08 ms</text>
+<text x="150" y="880" fill="#18191b" font-family="Arial, sans-serif" font-size="32" font-weight="700" dominant-baseline="text-before-edge" text-anchor="start">Overworld · 500–1000 · first pass</text>
+<text x="1850" y="883" fill="#686862" font-family="Arial, sans-serif" font-size="26" font-weight="400" dominant-baseline="text-before-edge" text-anchor="end">10 RTPs / plugin</text>
+<rect x="150" y="929" width="1450.000" height="24" fill="#e2dfd7"/>
+<rect x="150" y="929" width="357.360" height="24" fill="#248b46"/>
+<text x="1850" y="921" fill="#248b46" font-family="Arial, sans-serif" font-size="34" font-weight="700" dominant-baseline="text-before-edge" text-anchor="end">49.29 ms</text>
+<rect x="150" y="967" width="1450.000" height="24" fill="#e2dfd7"/>
+<rect x="150" y="967" width="835.773" height="24" fill="#aaa8a0"/>
+<text x="1850" y="959" fill="#18191b" font-family="Arial, sans-serif" font-size="34" font-weight="700" dominant-baseline="text-before-edge" text-anchor="end">115.28 ms</text>
+<text x="150" y="1024" fill="#18191b" font-family="Arial, sans-serif" font-size="32" font-weight="700" dominant-baseline="text-before-edge" text-anchor="start">Nether · 16–96</text>
+<text x="1850" y="1027" fill="#686862" font-family="Arial, sans-serif" font-size="26" font-weight="400" dominant-baseline="text-before-edge" text-anchor="end">10 RTPs / plugin</text>
+<rect x="150" y="1073" width="1450.000" height="24" fill="#e2dfd7"/>
+<rect x="150" y="1073" width="8.453" height="24" fill="#248b46"/>
+<text x="1850" y="1065" fill="#248b46" font-family="Arial, sans-serif" font-size="34" font-weight="700" dominant-baseline="text-before-edge" text-anchor="end">1.17 ms</text>
+<rect x="150" y="1111" width="1450.000" height="24" fill="#e2dfd7"/>
+<rect x="150" y="1111" width="1442.967" height="24" fill="#aaa8a0"/>
+<text x="1850" y="1103" fill="#18191b" font-family="Arial, sans-serif" font-size="34" font-weight="700" dominant-baseline="text-before-edge" text-anchor="end">199.03 ms</text>
+<text x="150" y="1168" fill="#18191b" font-family="Arial, sans-serif" font-size="32" font-weight="700" dominant-baseline="text-before-edge" text-anchor="start">End · 16–96</text>
+<text x="1850" y="1171" fill="#686862" font-family="Arial, sans-serif" font-size="26" font-weight="400" dominant-baseline="text-before-edge" text-anchor="end">10 RTPs / plugin</text>
+<rect x="150" y="1217" width="1450.000" height="24" fill="#e2dfd7"/>
+<rect x="150" y="1217" width="5.409" height="24" fill="#248b46"/>
+<text x="1850" y="1209" fill="#248b46" font-family="Arial, sans-serif" font-size="34" font-weight="700" dominant-baseline="text-before-edge" text-anchor="end">0.75 ms</text>
+<rect x="150" y="1255" width="1450.000" height="24" fill="#e2dfd7"/>
+<rect x="150" y="1255" width="1442.909" height="24" fill="#aaa8a0"/>
+<text x="1850" y="1247" fill="#18191b" font-family="Arial, sans-serif" font-size="34" font-weight="700" dominant-baseline="text-before-edge" text-anchor="end">199.02 ms</text>
+<text x="150.0" y="1312" fill="#686862" font-family="Arial, sans-serif" font-size="24" font-weight="400" dominant-baseline="text-before-edge" text-anchor="start">0</text>
+<text x="512.5" y="1312" fill="#686862" font-family="Arial, sans-serif" font-size="24" font-weight="400" dominant-baseline="text-before-edge" text-anchor="start">50</text>
+<text x="875.0" y="1312" fill="#686862" font-family="Arial, sans-serif" font-size="24" font-weight="400" dominant-baseline="text-before-edge" text-anchor="start">100</text>
+<text x="1237.5" y="1312" fill="#686862" font-family="Arial, sans-serif" font-size="24" font-weight="400" dominant-baseline="text-before-edge" text-anchor="start">150</text>
+<text x="1600.0" y="1312" fill="#686862" font-family="Arial, sans-serif" font-size="24" font-weight="400" dominant-baseline="text-before-edge" text-anchor="end">200</text>
+<rect x="150" y="1370" width="1700.000" height="2" fill="#d7d3cb"/>
+<text x="150" y="1401" fill="#18191b" font-family="Arial, sans-serif" font-size="29" font-weight="700" dominant-baseline="text-before-edge" text-anchor="start">70 successful RTPs per plugin. No basic landing-check failures.</text>
+<text x="150" y="1454" fill="#686862" font-family="Arial, sans-serif" font-size="25" font-weight="400" dominant-baseline="text-before-edge" text-anchor="start">Paper 26.3 · Java 25 · one client · restored world snapshot · queue and protection disabled.</text>
+<text x="150" y="1497" fill="#686862" font-family="Arial, sans-serif" font-size="25" font-weight="400" dominant-baseline="text-before-edge" text-anchor="start">Median samples: 10–20 requests per scenario. Random destinations; not CPU/RAM usage.</text>
+<text x="150" y="1540" fill="#686862" font-family="Arial, sans-serif" font-size="25" font-weight="400" dominant-baseline="text-before-edge" text-anchor="start">Flat Overworld; results are not a general performance or safety guarantee. Method and p95 in the report.</text>
+<text x="150" y="1620" fill="#18191b" font-family="Arial, sans-serif" font-size="28" font-weight="700" dominant-baseline="text-before-edge" text-anchor="start">modrinth.com/plugin/dyrtp</text>
+<text x="1850" y="1624" fill="#686862" font-family="Arial, sans-serif" font-size="24" font-weight="400" dominant-baseline="text-before-edge" text-anchor="end">11.10.2026</text>
+</svg>

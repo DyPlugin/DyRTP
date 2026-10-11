@@ -1,16 +1,16 @@
 # Main display prefix. Color codes use the Bukkit '&' format.
-prefix: '&7[&9DyRTP&7]'
-config-version: 8
+prefix: '&7[&aDyRTP&7]'
+config-version: 9
 
 language:
-  # Default language used for console and players without a saved choice.
+  # auto: saved player choice, then client locale; en/tr overrides all players and console.
   # Available: auto, en, tr
   default: auto
   # If enabled, DyRTP picks Turkish for players whose Minecraft locale starts with tr_.
   use-player-locale: true
   # If enabled, /dyrtp language saves the player's choice in players.yml.
   save-player-choice: true
-  # If enabled, help and tab completions prefer the player's active language.
+  # Help and TAB use the active language; other-language and ASCII aliases remain accepted.
   localized-commands: true
 
 rtp:
@@ -40,17 +40,21 @@ rtp:
   #     min-radius: 250
   #     shape: circle
   search:
-    # Higher values find locations faster but do more work per request.
+    # Maximum candidate attempts per request: 1-10000. Higher values do more work.
     max-attempts: 240
-    # Number of candidates checked together. Higher values are faster but busier.
+      # Cheap candidate checks per tick: 1-64. Each search waits for one chunk load at a time.
     batch-size: 32
+    # Overall search deadline in seconds: 1-300; late chunk callbacks are ignored.
+    timeout-seconds: 30
+    # Maximum simultaneous searches server-wide: 1-64.
+    max-concurrent-searches: 16
     # If the candidate chunk is already loaded, DyRTP checks it immediately instead of queueing an async load.
     prefer-loaded-chunks: true
     # Load candidate chunks before checking the final surface.
     load-chunks: true
     # Paper/Purpur async chunk loading is used when available; Spigot falls back safely.
     prefer-async-chunks: true
-    # Preload nearby chunks after a valid location is found. 0 disables it.
+    # Preload nearby chunks after finding a location: radius 0-4 chunks; 0 disables it.
     preload-radius: 1
     # If true, DyRTP waits for nearby preload chunks before teleporting.
     # Disable this for faster RTP; the target chunk is still loaded before teleporting.
@@ -107,12 +111,14 @@ rtp:
 warmup:
   # Optional delay before teleporting.
   enabled: true
+  # Seconds; ignored while disabled. Movement/damage cancellation applies during this warmup.
   seconds: 3
   cancel-on-move: true
   cancel-on-damage: true
 
 cooldown:
   enabled: false
+  # Seconds; starts after a successful teleport.
   seconds: 300
   per-world: false
 
@@ -120,7 +126,10 @@ economy:
   # Requires Vault plus an economy provider.
   enabled: false
   # Default teleport price used when paid RTP is enabled without a custom price.
+  # Must be finite and non-negative; 0 is free.
   cost: 100.0
+  # Debit immediately before teleport; true refunds a rejected/failed teleport once.
+  # false retains a successful debit even when teleport subsequently fails.
   charge-on-success-only: true
   # If enabled, paid teleports require clickable confirmation before searching.
   confirmation:
@@ -168,9 +177,9 @@ feedback:
 
 protection:
   enabled: true
-  # If enabled, a hook error rejects the location instead of ignoring that hook.
+  # Generic hook errors reject the location when true. DyClaim query errors always stop RTP.
   fail-closed: false
-  # Extra chunks around chunk-based claims to avoid teleporting right on borders.
+  # Extra chunks around chunk-based claims: 0-16; avoids teleporting on borders.
   claim-buffer-chunks: 0
   hooks:
     DyClaim: true

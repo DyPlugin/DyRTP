@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'dev.dyrtp'
-version = '1.0.0-Beta'
+version = '1.0.0'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -19,7 +19,14 @@ repositories {
 dependencies {
     compileOnly 'org.purpurmc.purpur:purpur-api:1.20.4-R0.1-SNAPSHOT'
     compileOnly 'com.github.MilkBowl:VaultAPI:1.7.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.mockito:mockito-core:5.15.2'
+    testImplementation 'org.purpurmc.purpur:purpur-api:1.20.4-R0.1-SNAPSHOT'
+    testImplementation 'com.github.MilkBowl:VaultAPI:1.7.1'
 }
+
+test { useJUnitPlatform() }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
@@ -27,6 +34,8 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 tasks.jar {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
     archiveBaseName.set('DyRTP')
     archiveVersion.set('v' + version)
 }

@@ -25,6 +25,9 @@ public final class ProtectionSnapshot {
                     return true;
                 }
             } catch (Exception e) {
+                if ("DyClaim".equals(hook.id())) {
+                    throw dyClaimFailure(e);
+                }
                 if (failClosed) {
                     return true;
                 }
@@ -41,6 +44,9 @@ public final class ProtectionSnapshot {
                     return true;
                 }
             } catch (Exception e) {
+                if ("DyClaim".equals(hook.id())) {
+                    throw dyClaimFailure(e);
+                }
                 if (failClosed) {
                     return true;
                 }
@@ -48,5 +54,10 @@ public final class ProtectionSnapshot {
             }
         }
         return false;
+    }
+
+    private IllegalStateException dyClaimFailure(Exception cause) {
+        ProtectionService.logDyClaimFailure(plugin, cause);
+        return new IllegalStateException("DyClaim protection could not be checked; RTP stopped safely", cause);
     }
 }

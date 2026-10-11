@@ -32,7 +32,14 @@ public class PlayerDataStore {
                 plugin.getLogger().warning("Could not create players.yml: " + e.getMessage());
             }
         }
-        this.data = YamlConfiguration.loadConfiguration(file);
+        try {
+            YamlConfiguration staged = new YamlConfiguration();
+            staged.load(file);
+            this.data = staged;
+        } catch (Exception exception) {
+            if (data == null) throw new IllegalStateException("Could not load players.yml; refusing to overwrite data", exception);
+            plugin.getLogger().warning("Could not reload players.yml; existing preferences retained: " + exception.getMessage());
+        }
     }
 
     public String getLanguage(UUID uuid) {
@@ -43,14 +50,21 @@ public class PlayerDataStore {
         if (language == null || language.equalsIgnoreCase("auto")) {
             data.set("players." + uuid + ".language", null);
         } else {
-            data.set("players." + uuid + ".language", language.toLowerCase());
+            data.set("players." + uuid + ".language", language.toLowerCase(java.util.Locale.ROOT));
         }
         save();
     }
 
     public void save() {
         try {
-            data.save(file);
+            java.nio.file.Path temporary = file.toPath().resolveSibling("players.yml.tmp");
+            data.save(temporary.toFile());
+            try {
+                java.nio.file.Files.move(temporary, file.toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException exception) {
+                java.nio.file.Files.move(temporary, file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             plugin.getLogger().warning("Could not save players.yml: " + e.getMessage());
         }

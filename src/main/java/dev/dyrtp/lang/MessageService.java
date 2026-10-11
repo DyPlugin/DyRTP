@@ -42,13 +42,16 @@ public class MessageService {
     public Language language(CommandSender sender) {
         String defaultSetting = plugin.getConfig().getString("language.default", "auto");
         Language fallback = Language.fromCode(defaultSetting, Language.EN);
+        if (!"auto".equalsIgnoreCase(defaultSetting)) {
+            return fallback;
+        }
         if (sender instanceof Player player) {
             String saved = playerDataStore.getLanguage(player.getUniqueId());
-            if (saved != null) {
+            if (plugin.getConfig().getBoolean("language.save-player-choice", true)
+                    && saved != null && !"auto".equalsIgnoreCase(saved)) {
                 return Language.fromCode(saved, fallback);
             }
-            if ("auto".equalsIgnoreCase(defaultSetting)
-                    || plugin.getConfig().getBoolean("language.use-player-locale", true)) {
+            if (plugin.getConfig().getBoolean("language.use-player-locale", true)) {
                 String locale = player.getLocale();
                 if (locale != null && locale.toLowerCase(Locale.ROOT).startsWith("tr")) {
                     return Language.TR;
@@ -106,7 +109,7 @@ public class MessageService {
     }
 
     public Map<String, String> basePlaceholders() {
-        return Map.of("{prefix}", plugin.getConfig().getString("prefix", "&7[&dDyRTP&7]"));
+        return Map.of("{prefix}", plugin.getConfig().getString("prefix", "&7[&aDyRTP&7]"));
     }
 
     public String apply(String text, Map<String, String> placeholders) {

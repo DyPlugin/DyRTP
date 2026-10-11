@@ -1,0 +1,6 @@
+plugins { id 'java' }
+repositories { mavenCentral(); maven { url = 'https://repo.purpurmc.org/snapshots' } }
+dependencies { compileOnly 'org.purpurmc.purpur:purpur-api:1.20.4-R0.1-SNAPSHOT' }
+java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release.set(17) }
+jar { archiveFileName = 'RtpComparisonProbe.jar' }

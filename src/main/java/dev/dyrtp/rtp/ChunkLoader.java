@@ -24,7 +24,7 @@ public class ChunkLoader {
         }
 
         if (!plugin.getConfig().getBoolean("rtp.search.load-chunks", true)) {
-            return CompletableFuture.completedFuture(world.getChunkAt(chunkX, chunkZ));
+            return CompletableFuture.failedFuture(new IllegalStateException("Candidate chunk is not loaded and chunk loading is disabled"));
         }
 
         if (plugin.getConfig().getBoolean("rtp.search.prefer-async-chunks", true)) {

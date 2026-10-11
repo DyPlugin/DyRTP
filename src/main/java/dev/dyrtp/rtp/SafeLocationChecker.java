@@ -8,6 +8,45 @@ import org.bukkit.block.data.Waterlogged;
 
 public class SafeLocationChecker {
 
+    public boolean isSafeAt(WorldProfile profile, SafetyRules rules, Location target) {
+        World world = profile.world();
+        if (target.getWorld() == null || !world.equals(target.getWorld())
+                || !Double.isFinite(target.getX()) || !Double.isFinite(target.getY()) || !Double.isFinite(target.getZ())
+                || !world.getWorldBorder().isInside(target)) {
+            return false;
+        }
+        int groundY = target.getBlockY() - 1;
+        Block ground = world.getBlockAt(target.getBlockX(), groundY, target.getBlockZ());
+        if (validLanding(profile, rules, ground) == null || target.getY() != groundY + 1.0D) {
+            return false;
+        }
+        if (rules.requireHeadRoom()) {
+            int minX = (int) Math.floor(target.getX() - 0.3D);
+            int maxX = (int) Math.floor(target.getX() + 0.3D);
+            int minZ = (int) Math.floor(target.getZ() - 0.3D);
+            int maxZ = (int) Math.floor(target.getZ() + 0.3D);
+            for (int x = minX; x <= maxX; x++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    if ((x >> 4 != target.getBlockX() >> 4 || z >> 4 != target.getBlockZ() >> 4)
+                            && !world.isChunkLoaded(x >> 4, z >> 4)) {
+                        return false;
+                    }
+                    if (!safeSpace(rules, world.getBlockAt(x, target.getBlockY(), z))
+                            || !safeSpace(rules, world.getBlockAt(x, target.getBlockY() + 1, z))) {
+                        return false;
+                    }
+                }
+            }
+        }
+        if (world.getEnvironment() != World.Environment.NETHER
+                && (rules.surfaceOnly() || rules.requireNaturalSkyAccess())
+                && surfaceY(world, target.getBlockX(), target.getBlockZ()) != groundY) {
+            return false;
+        }
+        return !rules.surfaceOnly() || world.getEnvironment() == World.Environment.NETHER
+                || !tooDeepComparedToNearbySurface(profile, rules, ground);
+    }
+
     public Location findSafe(WorldProfile profile, SafetyRules rules, int x, int z) {
         World world = profile.world();
         if (!world.getWorldBorder().isInside(new Location(world, x + 0.5D, 64.0D, z + 0.5D))) {
@@ -22,7 +61,7 @@ public class SafeLocationChecker {
     private Location findSurface(WorldProfile profile, SafetyRules rules, int x, int z) {
         World world = profile.world();
         int surfaceY = surfaceY(world, x, z);
-        if (surfaceY < profile.minY() || surfaceY > profile.maxY()) {
+        if (surfaceY + 1 < profile.minY() || surfaceY + 1 > profile.maxY()) {
             return null;
         }
 
@@ -51,7 +90,8 @@ public class SafeLocationChecker {
 
     private Location validLanding(WorldProfile profile, SafetyRules rules, Block ground) {
         int y = ground.getY() + 1;
-        if (y < profile.minY() || y > profile.maxY()) {
+        if (y < profile.minY() || y > profile.maxY()
+                || ground.getY() < profile.world().getMinHeight() || y + 1 >= profile.world().getMaxHeight()) {
             return null;
         }
         if (unsafeGround(rules, ground)) {
@@ -115,7 +155,12 @@ public class SafeLocationChecker {
                 {-radius, -radius}
         };
         for (int[] offset : offsets) {
-            int nearbyY = surfaceY(world, ground.getX() + offset[0], ground.getZ() + offset[1]);
+            int nearbyX = ground.getX() + offset[0];
+            int nearbyZ = ground.getZ() + offset[1];
+            if (!world.isChunkLoaded(nearbyX >> 4, nearbyZ >> 4)) {
+                return true;
+            }
+            int nearbyY = surfaceY(world, nearbyX, nearbyZ);
             if (nearbyY - groundY > maxDrop) {
                 return true;
             }
