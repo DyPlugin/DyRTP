@@ -1,4 +1,4 @@
-# DyRTP v1.0.0 — Stable Release
+# DyRTP 1.0.0
 
 Changes from 1.0.0-Beta, focused on reliable RTP, bounded search work and clearer commands while preserving existing settings, data and aliases.
 

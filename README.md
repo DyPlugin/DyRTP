@@ -1,16 +1,46 @@
-# DyRTP — Random Teleportation Done Right
+# DyRTP — Random Teleportation Made Simple
 
-Fast teleports. Safe locations. Clean commands.
+**Find new places. Choose your worlds. Keep exploring.**
 
-DyRTP is a command-based random teleport plugin for survival, SMP and economy servers. Configure world profiles, protection rules, warmup and optional payments without adding a GUI. Version 1.0.0 improves search efficiency, final destination checks, transaction handling and localized commands while preserving existing aliases, settings and YAML player preferences.
+DyRTP is a command-based random teleport plugin for survival, SMP and economy servers. Help players find new places, choose where they can travel and configure each world without a GUI.
+
+DyRTP combines configurable world profiles, destination safety checks, optional protection hooks and economy support with a familiar command-based workflow. **Version 1.0.0** improves destination searches, final safety checks, paid confirmations and English/Turkish commands while preserving existing aliases, settings and player preferences.
+
+---
+
+## New in 1.0.0
+
+**Keep exploration moving.** Searches use loaded chunks immediately and load one candidate at a time on supported servers, with configurable attempt, time and concurrency limits.
+
+**Check the destination again.** Terrain and protection checks run again before teleporting. Cancelled or outdated requests cannot later teleport a player, take payment or start a cooldown.
+
+**Keep paid teleports clear.** Optional payments use an expiring confirmation tied to the player, world and quoted price. Confirm or cancel through DyRTP's own commands.
+
+**Use familiar commands.** English and Turkish help and TAB suggestions follow the selected language. Existing aliases, custom translations and exact player names, including dotted names, are preserved.
+
+## Choose your server build
+
+| Server | JAR |
+| --- | --- |
+| Bukkit, Spigot, Paper, Purpur | `DyRTP-v1.0.0.jar` |
+
+Install **one** JAR per server. Stop the server and back up the complete DyRTP folder before replacing an older JAR. Existing world profiles, player preferences and custom translations are retained.
+
+Java 17 bytecode; use the runtime required by your server. Minecraft 1.20.x–26.x is the release listing; the completed live checks used Paper 26.3 / Java 25. Optional integrations must support your selected server too. The existing 1.0.0 download retains its original filename.
+
+[Downloads](https://github.com/DyPlugin/DyRTP/releases/tag/v1.0.0) · [Compatibility notes](https://github.com/DyPlugin/DyRTP/blob/main/docs/verification.md)
 
 ## Why DyRTP?
 
-**Bounded searches.** Loaded candidates are checked immediately. Supported servers load chunks asynchronously, with one pending candidate load per search to avoid speculative generation. Attempt, time and concurrency limits keep each search bounded.
+**Your worlds, your rules.** Choose a radius, center, shape and allowed biomes for each world. Add a warmup, cooldown or world redirect to fit your server.
 
-**Protection-aware destinations.** Configured terrain checks reject unsafe ground, liquids and obstructed headroom. Optional protection hooks exclude protected destinations; terrain and protection are checked again before teleport.
+**Safety you can configure.** Ground, liquids, height and headroom checks help reject unsafe destinations. Optional protection hooks keep players out of protected areas.
 
-**Familiar commands.** English and Turkish messages, help and TAB follow the effective language. Existing aliases and dotted player names remain supported. Green defaults and short console messages keep the presentation consistent with the DyPlugin family.
+**Automatic language.** English and Turkish messages, help and TAB follow the effective language. Players can save a preference, and administrators can choose one language for everyone.
+
+**Works with your server.** DyClaim and other supported protection adapters are optional. Add Vault and an economy provider for paid RTP, or use core teleportation without them.
+
+---
 
 ## A measured look at teleport time
 
@@ -20,7 +50,7 @@ On Paper 26.3 with one client, DyRTP had the lower observed median in all five m
 
 [Method, results and limitations](docs/betterrtp-comparison.md)
 
-## Usage
+## Commands
 
 | Command | Purpose |
 |---|---|
@@ -103,3 +133,18 @@ An isolated [BetterRTP comparison](docs/betterrtp-comparison.md) records common 
 ## License
 
 GNU Lesser General Public License v3.0 only (`LGPL-3.0-only`). See [LICENSE](LICENSE).
+
+## Get started
+
+1. Stop the server and back up the current JAR and complete `plugins/DyRTP/` folder.
+2. Install `DyRTP-v1.0.0.jar` and start the server to generate any missing defaults.
+3. Configure your worlds, safety checks and English/Turkish messages.
+4. Run `/dyrtp admin reload` to apply valid settings.
+
+First-join and death RTP remain disabled until configured. Core RTP needs no other plugin; paid RTP requires Vault and an economy provider.
+
+## Source and support
+
+[Documentation](https://github.com/DyPlugin/DyRTP#readme) · [Report an issue](https://github.com/DyPlugin/DyRTP/issues) · [License](https://github.com/DyPlugin/DyRTP/blob/main/LICENSE)
+
+**By Claww / DyPlugin.**
