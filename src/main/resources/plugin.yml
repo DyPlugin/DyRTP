@@ -39,12 +39,16 @@ commands:
     description: DyRTP commands
     usage: /<command> [subcommand]
     aliases:
+      - dyr
       - rtp
       - randomtp
       - wild
       - wildtp
       - rastgeletp
       - rastgeleteleport
+  dyra:
+    description: DyRTP administration commands
+    usage: /<command> [subcommand]
   onayla:
     description: Confirm a pending DyRTP teleport
     usage: /<command>

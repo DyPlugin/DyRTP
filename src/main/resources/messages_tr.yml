@@ -2,7 +2,7 @@ language-name: Türkçe
 value:
   enabled: "&aaçık"
   disabled: "&ckapalı"
-  language-auto: "Otomatik"
+  language-auto: "Oto"
   language-en: "İngilizce"
   language-tr: "Türkçe"
 general:
@@ -11,7 +11,7 @@ general:
   player-only: "{prefix} &cBu komut yalnızca oyun içinden kullanılabilir."
   reload: "{prefix} &aAyarlar ve mesajlar yenilendi."
   unknown-command: "{prefix} &cBilinmeyen komut. &f/dyrtp yardım &ckullan."
-  invalid-language: "{prefix} &cGeçerli diller: &fotomatik&7, &fen&7, &ftr&c."
+  invalid-language: "{prefix} &cGeçerli diller: &foto&7, &fen&7, &ftr&c."
   language-changed: "{prefix} &aDil tercihin &f{language}&a olarak güncellendi."
   player-not-found: "{prefix} &c{player} adlı oyuncu çevrim içi değil."
   config-updated: "{prefix} &a{setting}: &f{value}"
@@ -23,7 +23,7 @@ general:
   help-header: "&7&m----------&r &aDyRTP &fYardım &7&m----------"
   help-help: "&a/dyrtp yardım &7- Kullanılabilir komutları göster"
   help-rtp: "&a/dyrtp &7- Güvenli rastgele konuma ışınlan"
-  help-language: "&a/dyrtp dil <otomatik|en|tr> &7- Dil tercihini ayarla"
+  help-language: "&a/dyrtp dil <oto|en|tr> &7- Dil tercihini ayarla"
   help-confirm: "&a/dyrtp onayla &7- Bekleyen RTP isteğini onayla"
   help-cancel: "&a/dyrtp reddet &7- Bekleyen RTP isteğini iptal et"
   help-admin: "&a/dyrtp admin &7- Yönetim komutlarını göster"
@@ -62,7 +62,7 @@ admin:
     - "&a/dyrtp admin gecikme <saniye|kapalı> &7- Işınlanma öncesi bekleme süresini ayarlar"
     - "&a/dyrtp admin sınır enyakın <blok> &7- En yakın RTP mesafesini ayarlar"
     - "&a/dyrtp admin sınır enuzak <blok> &7- En uzak RTP mesafesini ayarlar"
-    - "&a/dyrtp admin dil <en|tr|otomatik> &7- Sunucu dil modunu ayarlar"
+    - "&a/dyrtp admin dil <en|tr|oto> &7- Sunucu dil modunu ayarlar"
     - "&a/dyrtp admin yenile &7- Ayarları ve mesajları yeniler"
     - "&8&m--------------------------------"
   help-v2:
@@ -73,7 +73,7 @@ admin:
     - "&a/dyrtp admin gecikme <saniye|kapalı> &7- Işınlanma öncesi bekleme süresini ayarlar"
     - "&a/dyrtp admin sınır enyakın <blok> &7- En yakın RTP mesafesini ayarlar"
     - "&a/dyrtp admin sınır enuzak <blok> &7- En uzak RTP mesafesini ayarlar"
-    - "&a/dyrtp admin dil <en|tr|otomatik> &7- Sunucu dil modunu ayarlar"
+    - "&a/dyrtp admin dil <en|tr|oto> &7- Sunucu dil modunu ayarlar"
     - "&a/dyrtp admin yenile &7- Ayarları ve mesajları yeniler"
     - "&8&m--------------------------------"
   help-v3:
@@ -84,7 +84,7 @@ admin:
     - "&a/dyrtp admin gecikme <saniye|kapalı> &7- Işınlanma öncesi bekleme süresini ayarlar"
     - "&a/dyrtp admin sınır enyakın <blok> &7- En yakın RTP mesafesini ayarlar"
     - "&a/dyrtp admin sınır enuzak <blok> &7- En uzak RTP mesafesini ayarlar"
-    - "&a/dyrtp admin dil <en|tr|otomatik> &7- Sunucu dil modunu ayarlar"
+    - "&a/dyrtp admin dil <en|tr|oto> &7- Sunucu dil modunu ayarlar"
     - "&a/dyrtp admin yenile &7- Ayarları ve mesajları yeniler"
     - "&8&m--------------------------------"
   help-v4:
@@ -96,7 +96,7 @@ admin:
     - "&a/dyrtp admin gecikme <saniye|kapalı> &7- Işınlanma öncesi bekleme süresini ayarlar"
     - "&a/dyrtp admin sınır enyakın <blok> &7- En yakın RTP mesafesini ayarlar"
     - "&a/dyrtp admin sınır enuzak <blok> &7- En uzak RTP mesafesini ayarlar"
-    - "&a/dyrtp admin dil <en|tr|otomatik> &7- Sunucu dil modunu ayarlar"
+    - "&a/dyrtp admin dil <en|tr|oto> &7- Sunucu dil modunu ayarlar"
     - "&a/dyrtp admin yenile &7- Ayarları ve mesajları yeniler"
     - "&8&m--------------------------------"
 updates:
@@ -127,7 +127,7 @@ rtp:
   success-subtitle: "&7X: {x} Y: {y} Z: {z}"
   success-subtitle-v2: "&7X: {x} Y: {y} Z: {z}"
   cooldown: "{prefix} &cTekrar ışınlanmak için &f{time}&c beklemelisin."
-  economy-missing: "{prefix} &cEkonomi açık fakat Vault veya ekonomi sağlayıcısı bulunamadı."
+  economy-missing: "{prefix} &cÜcretli ışınlanma için Vault ve çalışan bir ekonomi sağlayıcısı gerekli."
   not-enough-money: "{prefix} &cBu ışınlanma için &f{cost}&c gerekiyor."
   confirm-cost: "{prefix} &7Bu ışınlanma size &f{cost}&7 paraya mal olacaktır."
   confirm-price: "{prefix} &7Bu ışınlanma size &f{cost}&7 paraya mal olacaktır."

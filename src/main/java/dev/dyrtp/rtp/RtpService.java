@@ -43,6 +43,9 @@ public class RtpService {
     private final Map<UUID, PendingConfirmation> confirmations = new ConcurrentHashMap<>();
     private final Map<UUID, Request> active = new ConcurrentHashMap<>();
     private final Map<UUID, Request> teleporting = new ConcurrentHashMap<>();
+    // Bukkit tickets belong to a plugin, so simultaneous warmups sharing a chunk
+    // must release the ticket only when the last request finishes.
+    private final Map<DestinationChunk, Integer> warmupChunks = new HashMap<>();
     private long lifecycleRevision;
 
     public RtpService(DyRTP plugin, MessageService messages, EconomyService economy, ProtectionService protection) {
@@ -200,6 +203,7 @@ public class RtpService {
             if (request.search != null) request.search.cancel(false);
             clearBlindness(request);
             refund(request);
+            releaseDestination(request);
         }
         confirmations.remove(player.getUniqueId());
     }
@@ -227,6 +231,10 @@ public class RtpService {
     }
 
     private void startWarmup(Request request, Location location, int attempts, World world, RtpCause cause) {
+        DestinationChunk chunk = new DestinationChunk(location.getWorld(), location.getBlockX() >> 4, location.getBlockZ() >> 4);
+        if (!warmupChunks.containsKey(chunk)) chunk.world().addPluginChunkTicket(chunk.x(), chunk.z(), plugin);
+        warmupChunks.merge(chunk, 1, Integer::sum);
+        request.destinationChunk = chunk;
         Player player = request.player;
         int seconds = Math.max(1, plugin.getConfig().getInt("warmup.seconds", 3));
         sendRtp(player, "rtp.warmup", Map.of("{seconds}", String.valueOf(seconds)));
@@ -279,7 +287,12 @@ public class RtpService {
                 return;
             }
             if (warmupEnabled(player, cause)) {
-                startWarmup(request, result.location(), result.attempts(), world, cause);
+                try {
+                    startWarmup(request, result.location(), result.attempts(), world, cause);
+                } catch (RuntimeException warmupFailure) {
+                    plugin.getLogger().warning("RTP warmup could not retain its destination: " + warmupFailure.getMessage());
+                    fail(request, result.attempts());
+                }
             } else {
                 finishTeleport(request, result.location(), result.attempts(), world, cause);
             }
@@ -382,6 +395,7 @@ public class RtpService {
                 Bukkit.getPluginManager().callEvent(new DyRtpPostTeleportEvent(player, cause, target));
             } finally {
                 active.remove(player.getUniqueId(), request);
+                releaseDestination(request);
             }
     }
 
@@ -419,6 +433,18 @@ public class RtpService {
         request.withdrawal = null;
         if (withdrawal != null && request.refundOnFailure && !withdrawal.refund() && request.player.isOnline())
             sendRtp(request.player, "rtp.refund-failed");
+    }
+
+    private void releaseDestination(Request request) {
+        DestinationChunk chunk = request.destinationChunk;
+        request.destinationChunk = null;
+        if (chunk == null) return;
+        Integer references = warmupChunks.get(chunk);
+        if (references != null && references > 1) warmupChunks.put(chunk, references - 1);
+        else {
+            warmupChunks.remove(chunk);
+            chunk.world().removePluginChunkTicket(chunk.x(), chunk.z(), plugin);
+        }
     }
 
     private void clearBlindness(Request request) {
@@ -461,6 +487,7 @@ public class RtpService {
     private boolean costApplies(Player player, RtpCause cause) {
         return !cause.ignoreEconomy(plugin)
                 && economy.enabled()
+                && economy.available()
                 && economy.cost() > 0.0D
                 && !player.hasPermission("dyrtp.bypass.economy");
     }
@@ -562,6 +589,7 @@ public class RtpService {
     }
 
     private static final class Request {
+        private DestinationChunk destinationChunk;
         private final Player player;
         private final RtpCause cause;
         private final double cost;
@@ -580,6 +608,8 @@ public class RtpService {
             this.origin = player.getLocation().clone();
         }
     }
+
+    private record DestinationChunk(World world, int x, int z) { }
 
     private record PendingConfirmation(RtpCause cause, long expiresAt, UUID world, UUID sourceWorld, double cost, String token) {
 

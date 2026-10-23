@@ -127,7 +127,7 @@ rtp:
   success-subtitle: "&7X: {x} Y: {y} Z: {z}"
   success-subtitle-v2: "&7X: {x} Y: {y} Z: {z}"
   cooldown: "{prefix} &cYou can teleport again in &f{time}&c."
-  economy-missing: "{prefix} &cEconomy is enabled, but Vault or an economy provider is missing."
+  economy-missing: "{prefix} &cPaid teleports require Vault and an available economy provider."
   not-enough-money: "{prefix} &cYou need &f{cost}&c for this teleport."
   confirm-cost: "{prefix} &7This teleport will cost you &f{cost}&7."
   confirm-price: "{prefix} &7This teleport will cost you &f{cost}&7."

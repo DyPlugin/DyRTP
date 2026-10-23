@@ -6,6 +6,20 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class MessageMigrationTest {
+    @Test void unchangedAutomaticLabelsMigrateButCustomTranslationsRemain() throws Exception {
+        DyRTP plugin = mock(DyRTP.class, CALLS_REAL_METHODS);
+        YamlConfiguration defaults = new YamlConfiguration(), existing = new YamlConfiguration();
+        defaults.set("language-auto", "Oto"); existing.set("language-auto", "Otomatik");
+        defaults.set("help", java.util.List.of("/dyrtp dil <oto|en|tr>"));
+        existing.set("help", java.util.List.of("/dyrtp dil <otomatik|en|tr>"));
+        defaults.set("custom", "Oto"); existing.set("custom", "Benim otomatik tercihim");
+        var method = DyRTP.class.getDeclaredMethod("copyMissing", ConfigurationSection.class, ConfigurationSection.class);
+        method.setAccessible(true);
+        assertTrue((boolean) method.invoke(plugin, defaults, existing));
+        assertEquals("Oto", existing.getString("language-auto"));
+        assertEquals(defaults.getStringList("help"), existing.getStringList("help"));
+        assertEquals("Benim otomatik tercihim", existing.getString("custom"));
+    }
     @Test void stockBlueMessageMigratesButCustomizedTranslationIsPreserved() throws Exception {
         DyRTP plugin = mock(DyRTP.class, CALLS_REAL_METHODS);
         var defaults = new YamlConfiguration(); var existing = new YamlConfiguration();

@@ -4,31 +4,29 @@
 
 DyRTP is a command-based random teleport plugin for survival, SMP and economy servers. Help players find new places, choose where they can travel and configure each world without a GUI.
 
-DyRTP combines configurable world profiles, destination safety checks, optional protection hooks and economy support with a familiar command-based workflow. **Version 1.0.0** improves destination searches, final safety checks, paid confirmations and English/Turkish commands while preserving existing aliases, settings and player preferences.
+DyRTP combines configurable world profiles, destination safety checks, optional protection hooks and economy support with a familiar command-based workflow. **Version 1.0.1** fixes destination retention during warmup, keeps RTP free without an economy provider and adds shorter player/admin commands while preserving existing settings, aliases and player preferences.
 
 ---
 
-## New in 1.0.0
+## New in 1.0.1
 
-**Keep exploration moving.** Searches use loaded chunks immediately and load one candidate at a time on supported servers, with configurable attempt, time and concurrency limits.
+**Keep the destination ready.** A bounded plugin chunk ticket retains the selected destination throughout warmup. Tickets are shared safely between requests and released after completion, cancellation, reload or shutdown; terrain and protection are still checked before teleport.
 
-**Check the destination again.** Terrain and protection checks run again before teleporting. Cancelled or outdated requests cannot later teleport a player, take payment or start a cooldown.
+**Stay free without a provider.** Missing Vault or a registered economy provider keeps RTP free, including for ordinary players with older paid settings. Positive prices and enabling payments are rejected until a provider is detected. Provider transaction errors still stop paid requests safely.
 
-**Keep paid teleports clear.** Optional payments use an expiring confirmation tied to the player, world and quoted price. Confirm or cancel through DyRTP's own commands.
-
-**Use familiar commands.** English and Turkish help and TAB suggestions follow the selected language. Existing aliases, custom translations and exact player names, including dotted names, are preserved.
+**Use shorter commands.** `/dyr` is the player shortcut for `/dyrtp`; `/dyra` opens the existing admin branch with the same permissions and TAB suggestions. Turkish help/TAB use `oto`, with `Oto` as the language label; `otomatik` remains accepted. Help no longer includes a row describing the help command itself.
 
 ## Choose your server build
 
 | Server | JAR |
 | --- | --- |
-| Bukkit, Spigot, Paper, Purpur | `DyRTP-v1.0.0.jar` |
+| Bukkit, Spigot, Paper, Purpur | `DyRTP-1.0.1.jar` |
 
 Install **one** JAR per server. Stop the server and back up the complete DyRTP folder before replacing an older JAR. Existing world profiles, player preferences and custom translations are retained.
 
-Java 17 bytecode; use the runtime required by your server. Minecraft 1.20.x–26.x is the release listing; the completed live checks used Paper 26.3 / Java 25. Optional integrations must support your selected server too. The existing 1.0.0 download retains its original filename.
+Java 17 bytecode; use the runtime required by your server. Minecraft 1.20.x–26.x is the release listing; the fresh 1.0.1 live checks used Paper 26.1.2 / Java 25. Optional integrations must support your selected server too. Historical 1.0.0 downloads retain their original filenames.
 
-[Downloads](https://github.com/DyPlugin/DyRTP/releases/tag/v1.0.0) · [Compatibility notes](https://github.com/DyPlugin/DyRTP/blob/main/docs/verification.md)
+[Downloads](https://github.com/DyPlugin/DyRTP/releases/tag/1.0.1) · [Compatibility notes](https://github.com/DyPlugin/DyRTP/blob/main/docs/verification.md)
 
 ## Why DyRTP?
 
@@ -46,7 +44,7 @@ Java 17 bytecode; use the runtime required by your server. Minecraft 1.20.x–26
 
 ![DyRTP and BetterRTP median command-to-teleport time across five scenarios](docs/images/DyRTP-vs-BetterRTP-en.png)
 
-On Paper 26.3 with one client, DyRTP had the lower observed median in all five matched-setting samples. Each plugin completed 70 requests. These are command-to-teleport durations, not CPU/RAM measurements, and do not establish a universal speed or safety advantage. Protection and economy were disabled for the timing comparison.
+On Paper 26.1.2 with one non-OP client, DyRTP had the lower observed median in all five matched-setting samples. Each plugin completed 70 requests. These are command-to-teleport durations, not CPU/RAM measurements, and do not establish a universal speed or safety advantage. Protection and economy were disabled for the timing comparison.
 
 [Method, results and limitations](docs/betterrtp-comparison.md)
 
@@ -54,12 +52,12 @@ On Paper 26.3 with one client, DyRTP had the lower observed median in all five m
 
 | Command | Purpose |
 |---|---|
-| `/dyrtp` | Search for a safe random destination |
+| `/dyrtp` or `/dyr` | Search for a safe random destination |
 | `/dyrtp help` | Show commands available to you |
 | `/dyrtp language <auto/en/tr>` | Save your language preference |
 | `/dyrtp confirm` | Confirm your current paid RTP request |
 | `/dyrtp cancel` | Reject your pending confirmation |
-| `/dyrtp admin help` | Show administration commands |
+| `/dyrtp admin help` or `/dyra` | Show administration commands |
 | `/dyrtp admin force <player>` | Force RTP for an exact online player name |
 | `/dyrtp admin economy <on/off>` | Enable or disable paid RTP |
 | `/dyrtp admin price <amount>` | Set a finite, non-negative price |
@@ -70,9 +68,11 @@ On Paper 26.3 with one client, DyRTP had the lower observed median in all five m
 | `/dyrtp admin language <auto/en/tr>` | Configure the global language |
 | `/dyrtp admin reload` | Validate and reload settings and messages |
 
-`/rtp`, `/randomtp`, `/wild`, `/wildtp`, `/rastgeletp`, `/rastgeleteleport`, `/forcertp` and `/rtpforce` remain accepted. Existing English, Turkish and ASCII spellings remain accepted when typed manually, including `yonetim`. Help and TAB show the effective language, with the administration branch consistently named `admin`. Player names and other data arguments are never translated. Administrative settings and force commands work from the console; self-RTP and personal language changes require a player.
+`/dyr`, `/rtp`, `/randomtp`, `/wild`, `/wildtp`, `/rastgeletp`, `/rastgeleteleport`, `/forcertp` and `/rtpforce` remain accepted. Existing English, Turkish and ASCII spellings remain accepted when typed manually, including `yonetim`. Help and TAB show the effective language, with the administration branch consistently named `admin`. Player names and other data arguments are never translated. Administrative settings and force commands work from the console; self-RTP and personal language changes require a player.
 
 Legacy `/onayla`, `/confirm`, `/reddet` and `/cancel` registrations remain for compatibility. Other plugins can own those unqualified root commands. Use `/dyrtp confirm` or `/dyrtp cancel`; clickable buttons use `/dyrtp:dyrtp` and an expiring single-use request token, preventing an old button from approving a newer request or a DyClaim operation.
+
+`/dyra <operation>` is equivalent to `/dyrtp admin <operation>`. In Turkish, `oto` selects automatic language; the older `otomatik` alias remains accepted.
 
 ## Language and permissions
 
@@ -108,7 +108,7 @@ DyClaim query/API errors and installed-but-disabled DyClaim stop RTP safely; war
 
 Player targets use their complete online name, including the Floodgate prefix (for example `/dyrtp admin force .Player_Name`). TAB preserves that prefix. Names are not stripped or guessed; `.Player_Name` and `Player_Name` remain separate targets. RTP, confirmation and saved preferences are bound to the player's UUID.
 
-Paid RTP requires Vault and a registered economy provider. Missing Vault, missing provider and transaction/query failures are logged separately. Invalid prices are rejected. The confirmation binds the player, cause, source/destination world and quoted price, and expires; permissions and settings are checked again. A changed price/world requires a new request.
+Paid RTP requires Vault and a registered economy provider. Without either, RTP remains free; positive prices and enabling payments are rejected until a provider is detected. Missing Vault, missing provider and transaction/query failures are logged separately. Invalid prices are rejected. The confirmation binds the player, cause, source/destination world and quoted price, and expires; permissions and settings are checked again. A changed price/world requires a new request.
 
 The debit happens immediately before teleport. With `economy.charge-on-success-only: true`, a failed/cancelled teleport triggers one refund through the captured provider. With `false`, a successful debit can remain charged after a teleport failure. A successful teleport keeps its debit. Failed or uncertain withdrawals/refunds are never blindly retried; logs identify the player where reconciliation is required. Vault cannot guarantee atomic transactions across provider failures.
 
@@ -120,13 +120,13 @@ The existing Modrinth checker requests versions for the current Minecraft versio
 
 ## Build and verification
 
-Release listing: Minecraft 1.20.x through currently available 26.x releases on Bukkit, Spigot, Paper and Purpur. Compile target: Java 17 and Purpur/Bukkit API 1.20.4. Runtime Java requirements follow your Minecraft server version. The review exercised Paper 26.3 build 143 on Java 25; the listing is broader than the live matrix and does not establish verified compatibility with every Minecraft, Spigot, Purpur or protection-provider version.
+Release listing: Minecraft 1.20.x through currently available 26.x releases on Bukkit, Spigot, Paper and Purpur. Compile target: Java 17 and Purpur/Bukkit API 1.20.4. Runtime Java requirements follow your Minecraft server version. The fresh 1.0.1 checks exercised Paper 26.1.2 build 74 on Java 25; the listing is broader than the live matrix and does not establish verified compatibility with every Minecraft, Spigot, Purpur or protection-provider version.
 
 ```text
 gradle clean build
 ```
 
-Use Gradle 9.1 with Java 25, or a Gradle/JDK combination supporting the Java 17 source target. The JAR is `build/libs/DyRTP-v1.0.0.jar`. JUnit/Mockito tests are test dependencies only. See [verification record](docs/verification.md) for automated versus actual server coverage and limitations, and [changelog](CHANGELOG.md) for the changes from 1.0.0-Beta.
+Use Gradle 9.1 with Java 25, or a Gradle/JDK combination supporting the Java 17 source target. The JAR is `build/libs/DyRTP-1.0.1.jar`. JUnit/Mockito tests are test dependencies only. See [verification record](docs/verification.md) for automated versus actual server coverage and limitations, and [changelog](CHANGELOG.md) for changes from the last stable 1.0.0 release.
 
 An isolated [BetterRTP comparison](docs/betterrtp-comparison.md) records common command-to-teleport measurements across five scenarios. Results vary by profile; they do not establish a universal performance or safety advantage.
 
@@ -137,7 +137,7 @@ GNU Lesser General Public License v3.0 only (`LGPL-3.0-only`). See [LICENSE](LIC
 ## Get started
 
 1. Stop the server and back up the current JAR and complete `plugins/DyRTP/` folder.
-2. Install `DyRTP-v1.0.0.jar` and start the server to generate any missing defaults.
+2. Install `DyRTP-1.0.1.jar` and start the server to generate any missing defaults.
 3. Configure your worlds, safety checks and English/Turkish messages.
 4. Run `/dyrtp admin reload` to apply valid settings.
 

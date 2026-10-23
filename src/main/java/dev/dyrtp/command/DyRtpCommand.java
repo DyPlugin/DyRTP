@@ -44,6 +44,9 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (matches(command.getName(), "dyra") || matches(label, "dyra")) {
+            args = adminArguments(args);
+        }
         if (matches(command.getName(), "onayla") || matches(label, "onayla", "confirm")) {
             return confirm(sender, args.length > 0 ? args[0] : null);
         }
@@ -120,7 +123,6 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
 
     private void help(CommandSender sender) {
         messages.send(sender, "general.help-header");
-        messages.send(sender, "general.help-help");
         if (sender instanceof Player) {
             if (sender.hasPermission("dyrtp.use")) {
                 messages.send(sender, "general.help-rtp");
@@ -308,6 +310,7 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         }
         Boolean bool = parseBoolean(args[2]);
         if (bool != null) {
+            if (bool && !requireEconomyProvider(sender)) return true;
             boolean defaultPriceApplied = bool && plugin.getConfig().getDouble("economy.cost", 0.0D) <= 0.0D;
             Map<String, Object> changes = new java.util.HashMap<>();
             changes.put("economy.enabled", bool);
@@ -325,6 +328,7 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
                 messages.send(sender, "general.invalid-value");
                 return true;
             }
+            if (cost > 0 && !requireEconomyProvider(sender)) return true;
             if (!applyChanges(sender, Map.of("economy.cost", cost, "economy.enabled", cost > 0.0D))) return true;
             updated(sender, "economy.cost", cost);
         } catch (NumberFormatException e) {
@@ -344,6 +348,7 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
                 messages.send(sender, "general.invalid-value");
                 return true;
             }
+            if (cost > 0 && !requireEconomyProvider(sender)) return true;
             if (!applyChanges(sender, Map.of("economy.cost", cost, "economy.enabled", cost > 0.0D))) return true;
             updated(sender, "economy.cost", cost);
         } catch (NumberFormatException e) {
@@ -394,6 +399,12 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean requireEconomyProvider(CommandSender sender) {
+        if (plugin.getEconomy() != null && plugin.getEconomy().available()) return true;
+        messages.send(sender, "rtp.economy-missing");
+        return false;
+    }
+
     private boolean applyChanges(CommandSender sender, Map<String, Object> changes) {
         if (plugin.applyConfigChanges(changes)) return true;
         messages.send(sender, "general.reload-failed");
@@ -413,6 +424,9 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (matches(command.getName(), "dyra") || matches(alias, "dyra")) {
+            args = adminArguments(args);
+        }
         boolean tr = messages.language(sender) == Language.TR;
         if (args.length == 1) {
             if (matches(command.getName(), "forcertp")) {
@@ -435,7 +449,7 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 2 && matches(args[0], "language", "lang", "dil")) {
             return sender instanceof Player
-                    ? startsWith(args[1], tr ? List.of("otomatik", "en", "tr") : List.of("auto", "en", "tr"))
+                    ? startsWith(args[1], tr ? List.of("oto", "en", "tr") : List.of("auto", "en", "tr"))
                     : List.of();
         }
         if (args.length == 0 || !sender.hasPermission("dyrtp.admin")
@@ -451,7 +465,7 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             return startsWith(args[2], Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());
         }
         if (args.length == 3 && matches(args[1], "language", "lang", "dil")) {
-            return startsWith(args[2], tr ? List.of("otomatik", "en", "tr") : List.of("auto", "en", "tr"));
+            return startsWith(args[2], tr ? List.of("oto", "en", "tr") : List.of("auto", "en", "tr"));
         }
         if (args.length == 3 && matches(args[1], "economy", "ekonomi")) {
             return startsWith(args[2], tr ? List.of("aç", "kapat") : List.of("on", "off"));
@@ -538,8 +552,15 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         return raw;
     }
 
+    private static String[] adminArguments(String[] args) {
+        String[] admin = new String[args.length + 1];
+        admin[0] = "admin";
+        System.arraycopy(args, 0, admin, 1, args.length);
+        return admin;
+    }
+
     private static String normalizeLanguage(String language) {
-        if (matches(language, "otomatik", "automatic")) {
+        if (matches(language, "oto", "otomatik", "automatic")) {
             return "auto";
         }
         return language;

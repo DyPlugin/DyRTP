@@ -60,6 +60,11 @@ public class DyRTP extends JavaPlugin {
             dyRtpCommand.setExecutor(command);
             dyRtpCommand.setTabCompleter(command);
         }
+        PluginCommand adminCommand = getCommand("dyra");
+        if (adminCommand != null) {
+            adminCommand.setExecutor(command);
+            adminCommand.setTabCompleter(command);
+        }
         PluginCommand confirmCommand = getCommand("onayla");
         if (confirmCommand != null) {
             confirmCommand.setExecutor(command);
@@ -237,8 +242,21 @@ public class DyRTP extends JavaPlugin {
                 // Only migrate unchanged stock text; custom translations keep their formatting.
                 target.set(key, text);
                 changed = true;
+            } else if (target.get(key) instanceof String existing && value instanceof String text
+                    && !existing.equals(text) && automaticLabel(existing).equals(text)) {
+                target.set(key, text);
+                changed = true;
+            } else if (target.get(key) instanceof java.util.List<?> existing && value instanceof java.util.List<?> lines
+                    && !existing.equals(lines)
+                    && existing.stream().map(line -> line instanceof String text ? automaticLabel(text) : line).toList().equals(lines)) {
+                target.set(key, lines);
+                changed = true;
             }
         }
         return changed;
+    }
+
+    private static String automaticLabel(String text) {
+        return text.replace("Otomatik", "Oto").replace("otomatik", "oto");
     }
 }

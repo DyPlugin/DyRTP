@@ -1,0 +1,178 @@
+{
+  "dyrtp": [
+    {
+      "plugin": "dyrtp",
+      "world": "benchmark",
+      "label": "small-first",
+      "successes": "20",
+      "failures": "0",
+      "unsafe": "0",
+      "p50_ms": "1.531",
+      "p95_ms": "15.237",
+      "max_ms": "136.359",
+      "chunk_loads": "193",
+      "new_chunks": "188",
+      "resident_start": "121",
+      "resident_end": "309"
+    },
+    {
+      "plugin": "dyrtp",
+      "world": "benchmark",
+      "label": "small-second",
+      "successes": "20",
+      "failures": "0",
+      "unsafe": "0",
+      "p50_ms": "1.023",
+      "p95_ms": "2.248",
+      "max_ms": "2.790",
+      "chunk_loads": "215",
+      "new_chunks": "24",
+      "resident_start": "121",
+      "resident_end": "322"
+    },
+    {
+      "plugin": "dyrtp",
+      "world": "benchmark",
+      "label": "large-first",
+      "successes": "10",
+      "failures": "0",
+      "unsafe": "0",
+      "p50_ms": "52.658",
+      "p95_ms": "161.901",
+      "max_ms": "161.901",
+      "chunk_loads": "540",
+      "new_chunks": "449",
+      "resident_start": "270",
+      "resident_end": "637"
+    },
+    {
+      "plugin": "dyrtp",
+      "world": "benchmark_nether",
+      "label": "nether",
+      "successes": "10",
+      "failures": "0",
+      "unsafe": "0",
+      "p50_ms": "1.276",
+      "p95_ms": "283.704",
+      "max_ms": "283.704",
+      "chunk_loads": "227",
+      "new_chunks": "200",
+      "resident_start": "0",
+      "resident_end": "202"
+    },
+    {
+      "plugin": "dyrtp",
+      "world": "benchmark_the_end",
+      "label": "end",
+      "successes": "10",
+      "failures": "0",
+      "unsafe": "0",
+      "p50_ms": "0.733",
+      "p95_ms": "1.385",
+      "max_ms": "1.385",
+      "chunk_loads": "363",
+      "new_chunks": "360",
+      "resident_start": "0",
+      "resident_end": "361"
+    }
+  ],
+  "betterrtp": [
+    {
+      "plugin": "betterrtp",
+      "world": "benchmark",
+      "label": "small-first",
+      "successes": "20",
+      "failures": "0",
+      "unsafe": "0",
+      "p50_ms": "100.275",
+      "p95_ms": "102.207",
+      "max_ms": "309.503",
+      "chunk_loads": "194",
+      "new_chunks": "192",
+      "resident_start": "121",
+      "resident_end": "313"
+    },
+    {
+      "plugin": "betterrtp",
+      "world": "benchmark",
+      "label": "small-second",
+      "successes": "20",
+      "failures": "0",
+      "unsafe": "0",
+      "p50_ms": "100.138",
+      "p95_ms": "100.849",
+      "max_ms": "101.032",
+      "chunk_loads": "302",
+      "new_chunks": "103",
+      "resident_start": "121",
+      "resident_end": "421"
+    },
+    {
+      "plugin": "betterrtp",
+      "world": "benchmark",
+      "label": "large-first",
+      "successes": "10",
+      "failures": "0",
+      "unsafe": "0",
+      "p50_ms": "116.091",
+      "p95_ms": "233.119",
+      "max_ms": "233.119",
+      "chunk_loads": "591",
+      "new_chunks": "492",
+      "resident_start": "121",
+      "resident_end": "692"
+    },
+    {
+      "plugin": "betterrtp",
+      "world": "benchmark_nether",
+      "label": "nether",
+      "successes": "10",
+      "failures": "0",
+      "unsafe": "1",
+      "p50_ms": "100.998",
+      "p95_ms": "201.138",
+      "max_ms": "201.138",
+      "chunk_loads": "256",
+      "new_chunks": "249",
+      "resident_start": "0",
+      "resident_end": "251"
+    },
+    {
+      "plugin": "betterrtp",
+      "world": "benchmark_the_end",
+      "label": "end",
+      "successes": "10",
+      "failures": "0",
+      "unsafe": "0",
+      "p50_ms": "100.658",
+      "p95_ms": "217.543",
+      "max_ms": "217.543",
+      "chunk_loads": "364",
+      "new_chunks": "361",
+      "resident_start": "0",
+      "resident_end": "362"
+    }
+  ],
+  "artifacts": {
+    "DyRTP1.0.1": {
+      "bytes": 122932,
+      "sha256": "F0D15352F6C622E97395674E0D37BED9421FDF6678BA689F9C0ACD6769A98FB6"
+    },
+    "BetterRTP3.6.13": {
+      "bytes": 496799,
+      "sha256": "960C49CB7C9A03F31D2DD751F83A78479B3465BCB5EB65789B19874E13D503F2"
+    },
+    "Paper26.1.2build74": {
+      "bytes": 52893229,
+      "sha256": "1D70B1DAB9CF4A6DE615209A536F3A45A2186240253C428213CE2188AB95E5F7"
+    },
+    "probe": {
+      "bytes": 7546,
+      "sha256": "7CB395D2D751C0E67F99D9A51BCC77ACBD989C6579BED2C2EBD960EC0623A34B"
+    },
+    "DyRTP1.0.0historical": {
+      "bytes": 120306,
+      "sha256": "F66C39A0309885306798AEBFFCDF4785576F422DE2C77DAA25843360D5929487"
+    }
+  }
+}

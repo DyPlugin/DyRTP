@@ -12,17 +12,26 @@ public class EconomyService {
     public EconomyService(DyRTP plugin) { this.plugin = plugin; reload(); }
     public void reload() {
         economy = null;
-        if (!enabled()) return;
         if (plugin.getServer().getPluginManager().getPlugin("Vault") == null) {
-            plugin.getLogger().warning("Economy enabled, but Vault is not installed.");
+            if (enabled()) plugin.getLogger().warning("Vault is not installed; RTP remains free.");
             return;
         }
         RegisteredServiceProvider<Economy> registration = plugin.getServer().getServicesManager().getRegistration(Economy.class);
         if (registration != null) economy = registration.getProvider();
-        if (economy == null) plugin.getLogger().warning("Vault is installed, but no economy provider is registered.");
+        if (economy == null && enabled()) plugin.getLogger().warning("No economy provider is registered; RTP remains free.");
     }
     public boolean enabled() { return plugin.getConfig().getBoolean("economy.enabled", false); }
-    public boolean available() { return economy != null; }
+    public boolean available() {
+        // Vault alone is not a payment provider. Requery so a provider enabled or
+        // disabled after DyRTP is observed without forcing paid RTP on first.
+        if (plugin.getServer().getPluginManager().getPlugin("Vault") == null) {
+            economy = null;
+        } else {
+            RegisteredServiceProvider<Economy> registration = plugin.getServer().getServicesManager().getRegistration(Economy.class);
+            economy = registration == null ? null : registration.getProvider();
+        }
+        return economy != null;
+    }
     public double cost() {
         double amount = plugin.getConfig().getDouble("economy.cost", 0);
         if (!Double.isFinite(amount) || amount < 0) throw new IllegalArgumentException("economy.cost must be finite and nonnegative");

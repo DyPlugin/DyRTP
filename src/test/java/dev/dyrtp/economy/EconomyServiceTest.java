@@ -9,6 +9,19 @@ import java.util.logging.Logger;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 class EconomyServiceTest {
+    @Test void providerIsDetectedWhilePaymentsAreDisabledAndAfterRegistrationChanges() {
+        Fixture f = new Fixture();
+        var manager = f.plugin.getServer().getPluginManager();
+        var services = f.plugin.getServer().getServicesManager();
+        when(manager.getPlugin("Vault")).thenReturn(mock(org.bukkit.plugin.Plugin.class));
+        @SuppressWarnings("unchecked") var registration = (org.bukkit.plugin.RegisteredServiceProvider<Economy>) mock(org.bukkit.plugin.RegisteredServiceProvider.class);
+        Economy provider = mock(Economy.class);
+        when(registration.getProvider()).thenReturn(provider);
+        when(services.getRegistration(Economy.class)).thenReturn(registration);
+        assertTrue(f.service.available());
+        when(services.getRegistration(Economy.class)).thenReturn(null);
+        assertFalse(f.service.available());
+    }
     @Test void balanceProviderFailureDoesNotMasqueradeAsInsufficientFunds() throws Exception {
         Fixture f = new Fixture();
         Economy economy = mock(Economy.class);
@@ -67,6 +80,10 @@ class EconomyServiceTest {
         Fixture() {
             when(plugin.getConfig()).thenReturn(config);
             when(plugin.getLogger()).thenReturn(Logger.getAnonymousLogger());
+            var server = mock(org.bukkit.Server.class);
+            when(plugin.getServer()).thenReturn(server);
+            when(server.getPluginManager()).thenReturn(mock(org.bukkit.plugin.PluginManager.class));
+            when(server.getServicesManager()).thenReturn(mock(org.bukkit.plugin.ServicesManager.class));
             service = new EconomyService(plugin);
         }
     }

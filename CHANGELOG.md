@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.1
+
+Changes from 1.0.0:
+
+- Retain destination chunks during warmup and release shared tickets on completion, failure, cancellation, reload and shutdown. Preserve final terrain and claim checks.
+- Keep RTP free without Vault or a registered economy provider; reject positive prices and enabling payments until a provider is detected. Detect provider registration changes without enabling payments first.
+- Add `/dyr` as a player shortcut and `/dyra` for the existing admin branch, preserving permission and language rules.
+- Use Turkish `Oto`/`oto` in language labels, help and TAB while accepting `otomatik`. Migrate unchanged stock labels without replacing custom translations.
+- Remove the help command’s own descriptive row from the help menu.
+- Name new releases and JARs without a `v` prefix; preserve historical tags and downloads.
+- Repeat the controlled BetterRTP comparison for the new artifact and update the existing chart with the measured results.
+
 ## 1.0.0
 
 Changes from 1.0.0-Beta:

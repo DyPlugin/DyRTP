@@ -126,7 +126,7 @@ class DyRtpCommandTest {
         DyRtpCommand executor = new DyRtpCommand(null, messages, null, null, null);
         assertEquals(java.util.List.of("yardım", "dil", "reddet", "ışınlan", "onayla", "admin"),
                 executor.onTabComplete(player, command, "dyrtp", new String[]{""}));
-        assertEquals(java.util.List.of("otomatik", "en", "tr"),
+        assertEquals(java.util.List.of("oto", "en", "tr"),
                 executor.onTabComplete(player, command, "dyrtp", new String[]{"dil", ""}));
         assertFalse(executor.onTabComplete(player, command, "dyrtp", new String[]{"admin", ""}).contains("reload"));
     }
@@ -190,5 +190,65 @@ class DyRtpCommandTest {
         verify(rtp).confirm(player, "quote-token");
         verify(rtp).reject(player, "cancel-token");
         verify(rtp).confirm(player, "legacy-token");
+    }
+    @Test void dyraUsesAdminBranchPermissionAndTab() {
+        Command command = mock(Command.class);
+        when(command.getName()).thenReturn("dyra");
+        CommandSender sender = mock(CommandSender.class);
+        MessageService messages = mock(MessageService.class);
+        when(messages.language(sender)).thenReturn(Language.EN);
+        DyRtpCommand executor = new DyRtpCommand(null, messages, null, null, null);
+        executor.onCommand(sender, command, "dyra", new String[]{});
+        verify(messages).send(sender, "general.no-permission");
+        assertTrue(executor.onTabComplete(sender, command, "dyra", new String[]{""}).isEmpty());
+        when(sender.hasPermission("dyrtp.admin")).thenReturn(true);
+        assertTrue(executor.onTabComplete(sender, command, "dyra", new String[]{""}).contains("reload"));
+        executor.onCommand(sender, command, "dyra", new String[]{});
+        verify(messages).getList(sender, "admin.help-v4");
+    }
+    @Test void helpOmitsItsOwnCommandLine() {
+        Command command = mock(Command.class);
+        when(command.getName()).thenReturn("dyrtp");
+        MessageService messages = mock(MessageService.class);
+        CommandSender sender = mock(CommandSender.class);
+        new DyRtpCommand(null, messages, null, null, null).onCommand(sender, command, "dyr", new String[]{"help"});
+        verify(messages, never()).send(sender, "general.help-help");
+    }
+    @Test void otoAndLegacyOtomatikBothStoreAutoLanguage() {
+        Player player = mock(Player.class);
+        var store = mock(dev.dyrtp.storage.PlayerDataStore.class);
+        java.util.UUID id = java.util.UUID.randomUUID();
+        when(player.getUniqueId()).thenReturn(id);
+        Command command = mock(Command.class);
+        when(command.getName()).thenReturn("dyrtp");
+        MessageService messages = mock(MessageService.class);
+        when(messages.get(any(), anyString())).thenAnswer(invocation -> invocation.getArgument(1));
+        DyRtpCommand executor = new DyRtpCommand(null, messages, null, null, store);
+        executor.onCommand(player, command, "dyr", new String[]{"dil", "Oto"});
+        executor.onCommand(player, command, "dyr", new String[]{"dil", "otomatik"});
+        verify(store, times(2)).setLanguage(id, "auto");
+    }
+    @Test void paidConfigurationRequiresProviderButFreeOrOffRemainsAvailable() {
+        for (String[] args : new String[][]{{"admin", "price", "20"}, {"admin", "economy", "on"}, {"admin", "economy", "20"}, {"admin", "price", "0"}, {"admin", "economy", "off"}, {"admin", "economy", "0"}}) {
+            DyRTP plugin = mock(DyRTP.class);
+            var economy = mock(dev.dyrtp.economy.EconomyService.class);
+            when(plugin.getEconomy()).thenReturn(economy);
+            YamlConfiguration config = new YamlConfiguration();
+            config.set("economy.cost", 100.0);
+            when(plugin.getConfig()).thenReturn(config);
+            when(plugin.applyConfigChanges(anyMap())).thenReturn(true);
+            Command command = mock(Command.class);
+            when(command.getName()).thenReturn("dyrtp");
+            CommandSender sender = mock(CommandSender.class);
+            when(sender.hasPermission("dyrtp.admin")).thenReturn(true);
+            MessageService messages = mock(MessageService.class);
+            when(messages.get(any(), anyString())).thenAnswer(invocation -> invocation.getArgument(1));
+            new DyRtpCommand(plugin, messages, null, null, null).onCommand(sender, command, "dyrtp", args);
+            if (args[2].equals("0") || args[2].equals("off")) verify(plugin).applyConfigChanges(anyMap());
+            else {
+                verify(plugin, never()).applyConfigChanges(anyMap());
+                verify(messages).send(sender, "rtp.economy-missing");
+            }
+        }
     }
 }

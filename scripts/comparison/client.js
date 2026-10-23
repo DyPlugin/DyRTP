@@ -1,0 +1,14 @@
+const fs = require('fs');
+const path = require('path');
+const modules = process.env.RTP_CLIENT_MODULES;
+const mc = require(path.join(modules, 'minecraft-protocol'));
+const log = text => { const line = JSON.stringify({time:new Date().toISOString(),text}); console.log(line); fs.appendFileSync(process.env.RTP_CLIENT_LOG || 'client.jsonl',line+'\n'); };
+const client = mc.createClient({host:'127.0.0.1',port:25579,username:'DyRtpReview',auth:'offline',version:'26.1'});
+client.on('login',()=>log('LOGIN '+client.username));
+client.on('position',p=>{ log({position:p}); client.write('teleport_confirm',{teleportId:p.teleportId}); });
+client.on('systemChat',p=>log({chat:p.formattedMessage}));
+client.on('playerChat',p=>log({playerChat:p.plainMessage}));
+client.on('error',e=>log({error:String(e)}));
+client.on('end',r=>{log({end:r});process.exit(0)});
+client.on('kick_disconnect',p=>log({kick:p}));
+require('readline').createInterface({input:process.stdin}).on('line',line=>{if(line==='quit')client.end();else if(client.chat){log({command:line});client.chat(line);}});

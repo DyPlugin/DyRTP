@@ -4,7 +4,7 @@ import pathlib
 import re
 import sys
 
-root = pathlib.Path(r"C:\Users\alph\AppData\Local\Temp\DyRTP-BetterRTP-comparison-20261011")
+root = pathlib.Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else pathlib.Path(r"C:\Users\alph\AppData\Local\Temp\DyRTP-BetterRTP-comparison-20261023")
 project = pathlib.Path(r"C:\Users\alph\Documents\DyRTP")
 if sys.argv[1] not in ("small", "large"):
     raise SystemExit("Use small or large")
@@ -17,7 +17,7 @@ def patched(text, changes):
         match = re.match(r"^( *)([A-Za-z0-9_-]+):(?:\s*(.*))?$", line)
         indent = len(line) - len(line.lstrip())
         if skip is not None:
-            if not line.strip() or line.lstrip().startswith("#") or indent > skip:
+            if not line.strip() or line.lstrip().startswith("#") or indent > skip or (indent == skip and line.lstrip().startswith("-")):
                 continue
             skip = None
         if not match:
@@ -64,6 +64,7 @@ better_changes = {
     "Default.MinRadius": low, "Default.MaxRadius": high, "Default.MinY": -64,
     "Default.MaxY": 320, "BlacklistedBlocks": blacklist,
     "DisabledWorlds": [], "CustomWorlds": [], "Overrides": [],
+    "WorldType": [{"benchmark": "NORMAL"}, {"benchmark_nether": "NETHER"}, {"benchmark_the_end": "NORMAL"}],
 }
 (root / "plugins/BetterRTP/config.yml").write_text(patched(better, better_changes), encoding="utf-8")
 effects = (root / "BetterRTP-stock-effects.yml").read_text(encoding="utf-8")

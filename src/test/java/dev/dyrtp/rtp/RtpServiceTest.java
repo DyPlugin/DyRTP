@@ -20,6 +20,71 @@ import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RtpServiceTest {
+    @Test void twoPlayersSharingDestinationKeepTicketUntilBothWarmupsEnd() {
+        try (Fixture f = new Fixture()) {
+            f.config.set("warmup.enabled", true); f.config.set("warmup.seconds", 3);
+            Player second = mock(Player.class);
+            when(second.getUniqueId()).thenReturn(UUID.randomUUID());
+            when(second.getWorld()).thenReturn(f.world);
+            when(second.getLocation()).thenReturn(new Location(f.world, 0, 64, 0));
+            when(second.isOnline()).thenReturn(true); when(second.hasPermission("dyrtp.use")).thenReturn(true);
+            CompletableFuture<LocationFinder.SearchResult> otherResult = new CompletableFuture<>();
+            when(f.finder.constructed().get(0).find(any(), any())).thenReturn(f.result, otherResult);
+            f.service.request(f.player, RtpCause.COMMAND); f.service.request(second, RtpCause.COMMAND);
+            Location target = new Location(f.world, 40, 64, 40);
+            f.result.complete(new LocationFinder.SearchResult(target, 1));
+            otherResult.complete(new LocationFinder.SearchResult(target, 1));
+            f.service.cancelSilently(f.player);
+            verify(f.world, never()).removePluginChunkTicket(anyInt(), anyInt(), any());
+            f.service.cancelSilently(second);
+            verify(f.world).addPluginChunkTicket(2, 2, f.plugin);
+            verify(f.world).removePluginChunkTicket(2, 2, f.plugin);
+        }
+    }
+    @Test void ordinaryPlayerKeepsDestinationLoadedThroughoutWarmupAndReleasesIt() {
+        try (Fixture f = new Fixture()) {
+            f.config.set("warmup.enabled", true);
+            f.config.set("warmup.seconds", 3);
+            var scheduler = f.plugin.getServer().getScheduler();
+            var callback = org.mockito.ArgumentCaptor.forClass(Runnable.class);
+            Location target = new Location(f.world, -40.5, 64, 40.5);
+            java.util.concurrent.atomic.AtomicBoolean retained = new java.util.concurrent.atomic.AtomicBoolean();
+            when(f.world.addPluginChunkTicket(-3, 2, f.plugin)).thenAnswer(call -> { retained.set(true); return true; });
+            when(f.world.removePluginChunkTicket(-3, 2, f.plugin)).thenAnswer(call -> { retained.set(false); return true; });
+            when(f.finder.constructed().get(0).isSafeNow(any(), any())).thenAnswer(call -> retained.get());
+            when(f.player.teleport(any(Location.class))).thenReturn(true);
+            f.service.request(f.player, RtpCause.COMMAND);
+            f.result.complete(new LocationFinder.SearchResult(target, 1));
+            verify(scheduler).runTaskLater(eq(f.plugin), callback.capture(), eq(60L));
+            callback.getValue().run();
+            verify(f.player).teleport(target);
+            assertFalse(retained.get());
+            verify(f.world).removePluginChunkTicket(-3, 2, f.plugin);
+        }
+    }
+    @Test void cancelledWarmupReleasesDestinationTicketExactlyOnce() {
+        try (Fixture f = new Fixture()) {
+            f.config.set("warmup.enabled", true);
+            f.config.set("warmup.seconds", 3);
+            f.service.request(f.player, RtpCause.COMMAND);
+            f.result.complete(new LocationFinder.SearchResult(new Location(f.world, 40, 64, 40), 1));
+            f.service.cancelAll();
+            f.service.cancelAll();
+            verify(f.world).addPluginChunkTicket(2, 2, f.plugin);
+            verify(f.world).removePluginChunkTicket(2, 2, f.plugin);
+            verify(f.player, never()).teleport(any(Location.class));
+        }
+    }
+    @Test void missingProviderKeepsNonOpRtpFreeEvenWithStoredPaidSettings() {
+        try (Fixture f = new Fixture()) {
+            when(f.economy.enabled()).thenReturn(true);
+            when(f.economy.cost()).thenReturn(100D);
+            when(f.economy.available()).thenReturn(false);
+            f.service.request(f.player, RtpCause.COMMAND);
+            verify(f.finder.constructed().get(0)).find(any(), any());
+            verify(f.economy, never()).has(any(), anyDouble());
+        }
+    }
     @Test void expiredQuoteCannotStartSearchOrDebit() throws Exception {
         try (Fixture f = new Fixture()) {
             java.lang.reflect.Field field = RtpService.class.getDeclaredField("confirmations");

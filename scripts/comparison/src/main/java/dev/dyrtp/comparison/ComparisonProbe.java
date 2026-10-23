@@ -17,9 +17,14 @@ public final class ComparisonProbe extends JavaPlugin implements Listener {
             "SOUL_CAMPFIRE", "POWDER_SNOW", "SNOW", "COBWEB", "SWEET_BERRY_BUSH", "BEDROCK", "VOID_AIR");
     @Override public void onEnable() { getServer().getPluginManager().registerEvents(this, this); }
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length == 1 && args[0].equals("worlds")) {
+            sender.sendMessage("Worlds: " + getServer().getWorlds().stream().map(World::getName).toList());
+            return true;
+        }
         if (args.length < 4 || run != null) { sender.sendMessage("rtpcompare <dyrtp|betterrtp> <world> <count> <label>; one run at a time"); return true; }
         Player player = getServer().getPlayerExact("DyRtpReview");
         World world = getServer().getWorld(args[1]);
+        if (player != null && player.isOp()) { sender.sendMessage("Non-OP player required"); return true; }
         if (player == null || world == null) { sender.sendMessage("Connect DyRtpReview and use an existing world"); return true; }
         String pluginName = args[0].equals("dyrtp") ? "DyRTP" : "BetterRTP";
         var plugin = getServer().getPluginManager().getPlugin(pluginName);

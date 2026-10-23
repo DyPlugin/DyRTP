@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'dev.dyrtp'
-version = '1.0.0'
+version = '1.0.1'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -37,7 +37,7 @@ tasks.jar {
     preserveFileTimestamps = false
     reproducibleFileOrder = true
     archiveBaseName.set('DyRTP')
-    archiveVersion.set('v' + version)
+    archiveVersion.set(version)
 }
 
 processResources {

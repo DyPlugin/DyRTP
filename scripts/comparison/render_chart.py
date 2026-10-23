@@ -23,7 +23,7 @@ image = Image.new("RGB", (W, H), BG)
 draw = ImageDraw.Draw(image)
 svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">',
        '<title>DyRTP versus BetterRTP: median command-to-teleport time</title>',
-       '<desc>Five matched-setting samples on Paper 26.3. 70 successful requests per plugin. '
+       '<desc>Five matched-setting samples on Paper 26.1.2. 70 successful requests per plugin. '
        'Lower is faster. One client; protection and queue disabled; not CPU or RAM usage.</desc>',
        f'<rect width="{W}" height="{H}" fill="{BG}"/>']
 
@@ -47,7 +47,7 @@ text(150, 254, "Same settings. Measured RTP.", 68, bold=True)
 text(150, 356, "Lower median time in these samples.", 64, GREEN, True)
 text(150, 454, "Command-to-teleport time. Lower is faster.", 34, MUTED)
 rect(150, 523, 26, 26, GREEN)
-text(190, 518, "DyRTP 1.0.0", 30, bold=True)
+text(190, 518, "DyRTP 1.0.1", 30, bold=True)
 rect(515, 523, 26, 26, GRAY)
 text(555, 518, "BetterRTP 3.6.13", 30)
 text(1850, 520, "MEDIAN · ms", 28, MUTED, right=True)
@@ -70,12 +70,12 @@ for value in (0, 50, 100, 150, 200):
     x = left + plot_width * value / maximum
     text(x, 1312, str(value), 24, MUTED, right=value == 200)
 rect(150, 1370, 1700, 2, "#d7d3cb")
-text(150, 1401, "70 successful RTPs per plugin. No basic landing-check failures.", 29, bold=True)
-text(150, 1454, "Paper 26.3 · Java 25 · one client · restored world snapshot · queue and protection disabled.", 25, MUTED)
+text(150, 1401, "70 successful RTPs each. Basic check failures: DyRTP 0; BetterRTP 1.", 29, bold=True)
+text(150, 1454, "Paper 26.1.2 · Java 25 · one client · restored world snapshot · queue and protection disabled.", 25, MUTED)
 text(150, 1497, "Median samples: 10–20 requests per scenario. Random destinations; not CPU/RAM usage.", 25, MUTED)
 text(150, 1540, "Flat Overworld; results are not a general performance or safety guarantee. Method and p95 in the report.", 25, MUTED)
 text(150, 1620, "modrinth.com/plugin/dyrtp", 28, bold=True)
-text(1850, 1624, "11.10.2026", 24, MUTED, right=True)
+text(1850, 1624, "23.10.2026", 24, MUTED, right=True)
 svg.append("</svg>")
 image.save(OUTPUT / "DyRTP-vs-BetterRTP-en.png", optimize=True)
 (OUTPUT / "DyRTP-vs-BetterRTP-en.svg").write_text("\n".join(svg), encoding="utf-8")

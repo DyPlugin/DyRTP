@@ -1,4 +1,31 @@
-# Verification record: 1.0.0
+# Verification record: 1.0.1
+
+Reviewed on 2026-10-23 against the current GitHub `main` baseline `d3fb486ae51c2358c030d0786bf7412e0b3c708d`, including the updated public presentation. Only DyRTP was changed. The user authorized publishing 1.0.1 without a `v` prefix; historical releases remain unchanged.
+
+## Automated checks for 1.0.1
+
+`gradle clean test build` with Gradle 9.1.0 and Java 25 passed **90 tests, zero failures/errors/skips**. New regressions were observed failing before their fixes: warmup destination retention, cancellation cleanup, free non-OP RTP with stored paid settings and no provider, provider discovery while payments are disabled, shortcuts and permission filtering, Turkish `oto` and help simplification, and unchanged-stock translation migration. A shared-destination test confirms one player's cancellation cannot remove another player's warmup ticket. Java release 17, API/dependencies, license and YAML player data format are retained.
+
+## Targeted live checks for 1.0.1
+
+Disposable loopback Paper 26.1.2 build 74 / Java 25 with an actual offline Java protocol client, not an OP:
+
+- `/dyr` completes a normal three-second warmup and the client reaches the selected destination.
+- With stored `economy.enabled: true`, cost 100 and no Vault/provider, `/dyr` still completes without payment or confirmation.
+- With Paper chunk-unload delay set to zero for the targeted check, the destination remains available through warmup.
+- A normal player is denied `/dyra`; administrator positive-price edits are rejected without a provider.
+
+Controlled live regression: the official 1.0.0 artifact (`F66C39A0309885306798AEBFFCDF4785576F422DE2C77DAA25843360D5929487`) fails after the three-second warmup with chunk-unload delay zero, a 500–1000 radius and economy disabled. Under the same settings, 1.0.1 reaches the destination in 3503.662 ms, with one success and no basic safety failure. This reproduces the OP/non-OP difference without disabling safety checks or granting bypass permissions.
+
+Fresh candidate: `DyRTP-1.0.1.jar`, 122932 bytes, SHA-256 `F0D15352F6C622E97395674E0D37BED9421FDF6678BA689F9C0ACD6769A98FB6`. Local evidence folder: `C:\Users\alph\AppData\Local\Temp\DyRTP-BetterRTP-comparison-20261023`; controlled logs `historical-warmup-unload0.log` and `candidate-warmup-unload0.log`, with separate protocol client JSONL. Warmup/control runs are excluded from the matched timing samples.
+
+The fresh comparison results, logs, common settings, artifact hashes and limitations are recorded in [the comparison report](betterrtp-comparison.md). The protocol test library had no 26.3 packet dataset, so this release's fresh live checks use Paper 26.1.2. Historical Paper 26.3 checks below apply to the older 1.0.0 artifact only.
+
+Real Vault-provider money transfers, all optional protection providers, actual Bedrock/Geyser transport, every listed Minecraft/platform combination and high-player-count performance were not individually retested. Mock provider tests are automated regression evidence, not live economy certification.
+
+---
+
+# Historical verification record: 1.0.0
 
 Reviewed on 2026-10-11. The user explicitly selected stable 1.0.0 from 1.0.0-Beta. The review workspace had no Git metadata; original sources/build/docs/license were preserved at `C:\Users\alph\Documents\DyRTP-review-baseline-20261011`. No commit, push, publication or production installation occurred during the review. The user subsequently authorized a separate GitHub/Modrinth publication of 1.0.0 with the chart and release notes. DyClaim and other sibling project sources were not changed.
 

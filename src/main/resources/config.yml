@@ -123,7 +123,8 @@ cooldown:
   per-world: false
 
 economy:
-  # Requires Vault plus an economy provider.
+  # Paid RTP requires Vault plus a registered economy provider.
+  # Without a provider RTP stays free; positive prices/enabling payments are rejected.
   enabled: false
   # Default teleport price used when paid RTP is enabled without a custom price.
   # Must be finite and non-negative; 0 is free.
