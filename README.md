@@ -151,7 +151,7 @@ An isolated [BetterRTP comparison](docs/betterrtp-comparison.md) records common 
 
 ## License
 
-GNU Lesser General Public License v3.0 only (`LGPL-3.0-only`). See [LICENSE](LICENSE).
+DyRTP Source-Available License 1.0, the same terms as DyClaim: free to use and modify, no paid distribution, public source for distributed versions. It is a custom source-available license, not an OSI-approved open-source license. Versions up to 1.0.1 were distributed under `LGPL-3.0-only` and keep that license. See [LICENSE](LICENSE).
 
 ## Get started
 

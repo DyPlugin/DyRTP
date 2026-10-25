@@ -23,6 +23,7 @@ This release adds biome choice, settings per rank, PlaceholderAPI placeholders, 
 
 ## Changed
 
+- **New license.** DyRTP 1.1.0 and later use the DyRTP Source-Available License 1.0, the same terms as DyClaim: free to use and modify on any server, no paid distribution, and distributed versions must share their source. Earlier versions keep LGPL-3.0-only.
 - New installations read the vanilla `/worldborder` by default (`use-world-border: true`); `max-radius` still caps the distance. Existing configurations keep their value. Destinations outside the world border were and are always rejected.
 - Unchanged stock help and language texts in existing message files list the new languages after the upgrade. Edited texts are kept.
 

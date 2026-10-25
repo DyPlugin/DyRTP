@@ -1,19 +1,87 @@
-GNU LESSER GENERAL PUBLIC LICENSE Version 3, 29 June 2007
+DyRTP Source-Available License 1.0
+Effective date: 25 October 2026
 
-Copyright (C) 2007 Free Software Foundation, Inc.
+Copyright (c) 2026 Claww / DyPlugin and DyRTP contributors.
+All rights reserved except as expressly granted below.
 
-Everyone is permitted to copy and distribute verbatim copies of this license document, but changing it is not allowed.
+1. Scope
 
-This project is licensed under the GNU Lesser General Public License version 3 only.
+"Software" means the DyRTP code, binaries and documentation distributed
+with this license, to the extent the relevant copyright holders may grant
+these permissions. "Modified Version" means a modification or derivative
+of that Software. This is a custom source-available license, not the GNU GPL
+and not an OSI-approved open-source license.
 
-SPDX-License-Identifier: LGPL-3.0-only
+2. Permitted use
 
-Full license text:
+You may download, inspect, run, copy and modify the Software, including for
+personal, educational and commercial Minecraft servers. Running a server
+that accepts donations or sells server access does not itself constitute
+selling the Software. You may redistribute the Software or Modified Versions
+without charge if you meet all conditions below.
 
-GNU Lesser General Public License v3.0:
-https://www.gnu.org/licenses/lgpl-3.0.txt
+3. No paid distribution
 
-GNU General Public License v3.0:
-https://www.gnu.org/licenses/gpl-3.0.txt
+Without separate written permission from the relevant copyright holders,
+you must not sell, sublicense for a fee, offer paid downloads of, or require
+payment or a donation to obtain the Software or a Modified Version. You must
+not include it in a paid software bundle or use another arrangement to charge
+for access to its source or binaries. Voluntary donations are allowed only
+when access to the Software is not conditional on donating.
 
-The GNU Lesser General Public License version 3 incorporates the terms and conditions of version 3 of the GNU General Public License, supplemented by the additional permissions listed in the LGPLv3 license document.
+4. Source availability on distribution
+
+Whenever you distribute the Software or a Modified Version, provide a public,
+free-of-charge link to its complete corresponding source code, including
+your changes and the build files needed to produce the distributed version.
+Keep that source available for as long as you offer the distribution. Do not
+distribute a closed-source Modified Version. Private modifications that you
+do not distribute do not have to be published.
+
+5. Attribution and notices
+
+Retain this license and existing copyright and attribution notices in source
+and binary distributions. Identify DyRTP and Claww / DyPlugin visibly in
+the plugin description, README or equivalent documentation, and any public
+distribution page. Modified Versions must identify their changes and must
+not imply that they are official releases or endorsed by the original authors.
+
+6. Same terms for redistribution
+
+Distribute covered Software and Modified Versions under this license, with
+no additional terms that remove the permissions granted here or defeat its
+conditions. No ownership of the Software, project name or branding is
+transferred. Attribution does not grant permission to impersonate the project.
+
+7. Third-party material and earlier distributions
+
+Third-party components, dependencies and contributions remain subject to
+their applicable rights and licenses. This license does not override those
+licenses or grant rights the relevant copyright holders do not possess.
+Earlier copies distributed under another license retain their applicable
+license; this notice does not retroactively revoke previously granted rights.
+If you cannot satisfy all applicable licenses, do not redistribute that
+combination without obtaining the required permissions.
+
+8. Termination
+
+Permissions under this license terminate if you fail to comply with its
+conditions. They are reinstated when the violation is fully cured, unless
+the relevant copyright holder has separately terminated them in writing.
+Termination does not remove any rights you have independently under law
+or under an applicable license for an earlier distribution.
+
+9. Disclaimer of warranty and liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE SOFTWARE IS PROVIDED
+"AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
+THE AUTHORS AND COPYRIGHT HOLDERS ARE NOT LIABLE FOR ANY CLAIM, DAMAGE OR
+OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE, WHETHER IN CONTRACT,
+TORT OR OTHERWISE. MANDATORY LEGAL RIGHTS REMAIN UNAFFECTED.
+
+10. Separate permissions
+
+For permissions beyond this license, contact Claww / DyPlugin through
+https://github.com/DyPlugin/DyRTP. A separate permission is valid only
+when granted in writing by the relevant rights holder.
