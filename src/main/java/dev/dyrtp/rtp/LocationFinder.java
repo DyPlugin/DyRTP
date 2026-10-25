@@ -31,6 +31,16 @@ public class LocationFinder {
     }
 
     public CompletableFuture<SearchResult> find(World world, Location origin) {
+        return find(world, origin, null);
+    }
+
+    /** Searches for a safe spot; with a biome, only that biome qualifies and the biome attempt limit applies. */
+    public CompletableFuture<SearchResult> find(World world, Location origin, String biome) {
+        return find(world, origin, biome, 0);
+    }
+
+    /** maxRadius above 0 replaces the world's farthest distance for this search (dyrtp.radius.<blocks>). */
+    public CompletableFuture<SearchResult> find(World world, Location origin, String biome, int maxRadius) {
         CompletableFuture<SearchResult> future = new CompletableFuture<>();
         runMain(() -> {
             try {
@@ -41,9 +51,14 @@ public class LocationFinder {
                 }
                 searches.add(future);
                 future.whenComplete((result, error) -> searches.remove(future));
-                WorldProfile profile = WorldProfile.load(plugin, world);
-                SearchState state = new SearchState(profile, SafetyRules.load(plugin, profile), protection.snapshot(), origin, future);
-                long timeout = Math.max(1, Math.min(300, plugin.getConfig().getLong("rtp.search.timeout-seconds", 30)));
+                WorldProfile profile = WorldProfile.load(plugin, world).withMaxRadius(maxRadius);
+                SearchState state = new SearchState(profile, SafetyRules.load(plugin, profile).withBiome(biome), protection.snapshot(), origin, future);
+                state.maxAttempts = biome == null
+                        ? Math.max(1, plugin.getConfig().getInt("rtp.search.max-attempts", 160))
+                        : Math.max(1, Math.min(10000, plugin.getConfig().getInt("biome-selection.max-attempts", 1000)));
+                long timeout = Math.max(1, Math.min(300, biome == null
+                        ? plugin.getConfig().getLong("rtp.search.timeout-seconds", 30)
+                        : plugin.getConfig().getLong("biome-selection.timeout-seconds", 60)));
                 future.orTimeout(timeout, TimeUnit.SECONDS);
                 attemptSafely(state);
             } catch (RuntimeException error) {
@@ -95,7 +110,7 @@ public class LocationFinder {
             return;
         }
 
-        int maxAttempts = Math.max(1, plugin.getConfig().getInt("rtp.search.max-attempts", 160));
+        int maxAttempts = state.maxAttempts;
         int batchSize = Math.max(1, Math.min(64, plugin.getConfig().getInt("rtp.search.batch-size", 24)));
         boolean preferLoadedChunks = plugin.getConfig().getBoolean("rtp.search.prefer-loaded-chunks", true);
         int launched = 0;
@@ -302,6 +317,7 @@ public class LocationFinder {
         private final CompletableFuture<SearchResult> future;
         private final Map<Long, Boolean> chunkProtectionCache = new HashMap<>();
         private int attempts;
+        private int maxAttempts = 160;
         private int inFlight;
         private boolean completing;
 

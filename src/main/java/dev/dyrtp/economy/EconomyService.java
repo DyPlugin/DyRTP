@@ -9,7 +9,8 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 public class EconomyService {
     private final DyRTP plugin;
     private Economy economy;
-    public EconomyService(DyRTP plugin) { this.plugin = plugin; reload(); }
+    private final dev.dyrtp.rank.RankRules ranks;
+    public EconomyService(DyRTP plugin) { this.plugin = plugin; this.ranks = new dev.dyrtp.rank.RankRules(plugin); reload(); }
     public void reload() {
         economy = null;
         if (plugin.getServer().getPluginManager().getPlugin("Vault") == null) {
@@ -37,7 +38,9 @@ public class EconomyService {
         if (!Double.isFinite(amount) || amount < 0) throw new IllegalArgumentException("economy.cost must be finite and nonnegative");
         return amount;
     }
-    public boolean has(Player player) { return !enabled() || has(player, cost()); }
+    /** The configured price, or a lower one from a dyrtp.price.<amount> permission. */
+    public double cost(Player player) { return ranks.price(player, cost()); }
+    public boolean has(Player player) { return !enabled() || has(player, cost(player)); }
     public boolean has(Player player, double amount) {
         validate(amount);
         try { return amount == 0 || (economy != null && economy.has(player, amount)); }
@@ -46,7 +49,7 @@ public class EconomyService {
             throw new IllegalStateException("Economy balance query failed", exception);
         }
     }
-    public boolean withdraw(Player player) { return !enabled() || withdraw(player, cost()) != null; }
+    public boolean withdraw(Player player) { return !enabled() || withdraw(player, cost(player)) != null; }
     public Withdrawal withdraw(Player player, double amount) {
         validate(amount);
         if (amount == 0) return new Withdrawal(player, null, 0);

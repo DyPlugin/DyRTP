@@ -1,4 +1,36 @@
-# Verification record: 1.0.1
+# Verification record: 1.1.0
+
+Reviewed on 2026-10-24 on branch `release/1.1.0` from `30705df033a1a477e4008e7b35c9a2af3d96bed6`. Nothing was committed, pushed or published.
+
+## Automated checks for 1.1.0
+
+`gradle clean test build` with Gradle 9.1.0 passed **105 tests, zero failures/errors/skips**. New tests cover rank cooldown, price and radius (lowest or highest wins, switches off), the five languages and client-locale detection, migration of unchanged stock texts, biome choice and blacklist, MiniMessage with escaped placeholder values, PlaceholderAPI values, the API, the target world for automatic RTP, a biome surviving confirmation, and the packaged bStats relocation. Java release 17 and the YAML player data format are retained.
+
+## Live checks for 1.1.0
+
+Candidate: `DyRTP-1.1.0.jar`, 173082 bytes, SHA-256 `FFBE43B201F2128733AB9C829D38B4F7C80604EDCD8144E3C7B5FB44A2B06111`. The same file was used on both servers below.
+
+Disposable loopback Purpur 1.20.4 on Java 21 with LuckPerms 5.5.71, PlaceholderAPI 2.12.3, Vault 1.7.3 and EssentialsX 2.21.2, driven by a real offline protocol client without OP. **22/22 checks passed:**
+
+- First-join RTP moved a new player 678 blocks; death RTP moved the player again.
+- Default cooldown 5 minutes; with `dyrtp.cooldown.20` and `dyrtp.cooldown.120` the 20-second cooldown applied.
+- With `dyrtp.price.25` the RTP cost 25 instead of 100, and exactly 25 was charged through Vault/EssentialsX.
+- Without a rank the RTP stayed within 600 blocks (559); with `dyrtp.radius.2000` it went 1564 blocks.
+- PlaceholderAPI returned cooldown, readiness, world and price values, and registered again after reload.
+- A MiniMessage gradient in `messages_en.yml` reached the client as hex colours.
+- German, Spanish and Russian help were shown.
+- Biome TAB suggestions, unknown-biome rejection, `/rtp biome plains` landing in plains (checked by the server with `execute if biome`), the not-found message and `biome-selection.enabled: false` all behaved as documented.
+- No DyRTP errors in the log.
+
+Disposable loopback Spigot 26.3 (build 4663) on Java 25, which ships no Adventure. **5/5 checks passed:** the plugin enabled, `/rtp` completed, a MiniMessage tag was shown as written while `&` codes still applied, German help was shown, and no DyRTP or Adventure errors were logged.
+
+The BetterRTP comparison was repeated with the same JAR on Paper 26.1.2: DyRTP had the lower median in all five scenarios, with 70 successful teleports per plugin and no failures. See [the comparison report](betterrtp-comparison.md).
+
+bStats was disabled on both test servers. Bedrock/Geyser transport, Folia, every protection provider and high player counts were not retested for 1.1.0.
+
+---
+
+# Historical verification record: 1.0.1
 
 Reviewed on 2026-10-23 against the current GitHub `main` baseline `d3fb486ae51c2358c030d0786bf7412e0b3c708d`, including the updated public presentation. Only DyRTP was changed. The user authorized publishing 1.0.1 without a `v` prefix; historical releases remain unchanged.
 

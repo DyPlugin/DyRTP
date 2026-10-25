@@ -1,5 +1,6 @@
 package dev.dyrtp.cooldown;
 
+import dev.dyrtp.rank.RankRules;
 import dev.dyrtp.DyRTP;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -12,9 +13,11 @@ public class CooldownService {
 
     private final DyRTP plugin;
     private final Map<String, Long> cooldowns = new ConcurrentHashMap<>();
+    private final RankRules ranks;
 
     public CooldownService(DyRTP plugin) {
         this.plugin = plugin;
+        this.ranks = new RankRules(plugin);
     }
 
     public long remainingSeconds(Player player, World world) {
@@ -33,7 +36,7 @@ public class CooldownService {
         if (!plugin.getConfig().getBoolean("cooldown.enabled", false)) {
             return;
         }
-        int seconds = Math.max(0, plugin.getConfig().getInt("cooldown.seconds", 0));
+        int seconds = ranks.cooldownSeconds(player);
         cooldowns.put(key(player.getUniqueId(), world), System.currentTimeMillis() + seconds * 1000L);
     }
 

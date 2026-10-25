@@ -38,6 +38,18 @@ public record SafetyRules(
         return blacklistedBlocks.contains(material.name());
     }
 
+    /**
+     * Narrows the search to one biome a player picked. A world's own allowed-biomes list still applies,
+     * so a biome outside it can never be found there.
+     */
+    public SafetyRules withBiome(String biome) {
+        if (biome == null || biome.isBlank()) return this;
+        String wanted = biome.toUpperCase(Locale.ROOT);
+        Set<String> only = allowedBiomes.isEmpty() || allowedBiomes.contains(wanted) ? Set.of(wanted) : Set.of("-");
+        return new SafetyRules(surfaceOnly, requireNaturalSkyAccess, minDistanceFromCurrent, nearbySurfaceRadius, maxNearbySurfaceDrop,
+                requireHeadRoom, blacklistedBlocks, blacklistedBiomes, only);
+    }
+
     public boolean biomeAllowed(Block block) {
         String biome = block.getBiome().name().toUpperCase(Locale.ROOT);
         return !blacklistedBiomes.contains(biome) && (allowedBiomes.isEmpty() || allowedBiomes.contains(biome));

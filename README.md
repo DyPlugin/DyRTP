@@ -4,11 +4,25 @@
 
 DyRTP is a command-based random teleport plugin for survival, SMP and economy servers. Help players find new places, choose where they can travel and configure each world without a GUI.
 
-DyRTP combines configurable world profiles, destination safety checks, optional protection hooks and economy support with a familiar command-based workflow. **Version 1.0.1** fixes destination retention during warmup, keeps RTP free without an economy provider and adds shorter player/admin commands while preserving existing settings, aliases and player preferences.
+DyRTP combines configurable world profiles, destination safety checks, optional protection hooks and economy support with a familiar command-based workflow. **Version 1.1.0** adds biome choice, cooldowns, prices and distances per rank, PlaceholderAPI placeholders, German, Spanish and Russian messages, MiniMessage formatting and a developer API, while preserving existing settings, aliases and player preferences.
 
 ---
 
-## New in 1.0.1
+## New in 1.1.0
+
+**Choose a biome.** `/rtp biome <biome>` finds a safe spot in the chosen biome, with TAB suggestions. Server owners can limit the choice with `biome-selection.biomes` or turn it off; blacklisted biomes such as oceans can never be chosen.
+
+**Ranks.** `dyrtp.cooldown.<seconds>` and `dyrtp.price.<amount>` give a group its own cooldown or price (the lowest wins), and `dyrtp.radius.<blocks>` its own farthest distance (the highest wins). `dyrtp.cooldown.0` removes the wait.
+
+**Placeholders.** With PlaceholderAPI: `%dyrtp_cooldown%`, `%dyrtp_cooldown_formatted%`, `%dyrtp_ready%`, `%dyrtp_price%`, `%dyrtp_price_formatted%` and `%dyrtp_world%`.
+
+**More languages and MiniMessage.** German, Spanish and Russian join English and Turkish. Messages accept `&` colour codes everywhere and, on Paper and Purpur, MiniMessage tags such as `<gradient:#55ff55:#55ffff>`.
+
+**First join and death.** First-join and death RTP can send players to a chosen world with `first-join-rtp.world` and `death-rtp.world`. New installations read the vanilla `/worldborder` by default.
+
+**For developers.** `DyRTPAPI` reports cooldown, price and destination world and can start an RTP. Anonymous [bStats](https://bstats.org/plugin/bukkit/DyRTP/34913) statistics can be turned off with `metrics.enabled: false`.
+
+## Changes in 1.0.1
 
 **Keep the destination ready.** A bounded plugin chunk ticket retains the selected destination throughout warmup. Tickets are shared safely between requests and released after completion, cancellation, reload or shutdown; terrain and protection are still checked before teleport.
 
@@ -20,13 +34,13 @@ DyRTP combines configurable world profiles, destination safety checks, optional 
 
 | Server | JAR |
 | --- | --- |
-| Bukkit, Spigot, Paper, Purpur | `DyRTP-1.0.1.jar` |
+| Bukkit, Spigot, Paper, Purpur | `DyRTP-1.1.0.jar` |
 
 Install **one** JAR per server. Stop the server and back up the complete DyRTP folder before replacing an older JAR. Existing world profiles, player preferences and custom translations are retained.
 
-Java 17 bytecode; use the runtime required by your server. Minecraft 1.20.x–26.x is the release listing; the fresh 1.0.1 live checks used Paper 26.1.2 / Java 25. Optional integrations must support your selected server too. Historical 1.0.0 downloads retain their original filenames.
+Java 17 bytecode; use the runtime required by your server. Minecraft 1.20.x–26.x is the release listing; the 1.1.0 live checks used Purpur 1.20.4 / Java 21 and Spigot 26.3 / Java 25. Optional integrations must support your selected server too. Historical 1.0.0 downloads retain their original filenames.
 
-[Downloads](https://github.com/DyPlugin/DyRTP/releases/tag/1.0.1) · [Compatibility notes](https://github.com/DyPlugin/DyRTP/blob/main/docs/verification.md)
+[Downloads](https://github.com/DyPlugin/DyRTP/releases/tag/1.1.0) · [Compatibility notes](https://github.com/DyPlugin/DyRTP/blob/main/docs/verification.md)
 
 ## Why DyRTP?
 
@@ -34,7 +48,7 @@ Java 17 bytecode; use the runtime required by your server. Minecraft 1.20.x–26
 
 **Safety you can configure.** Ground, liquids, height and headroom checks help reject unsafe destinations. Optional protection hooks keep players out of protected areas.
 
-**Automatic language.** English and Turkish messages, help and TAB follow the effective language. Players can save a preference, and administrators can choose one language for everyone.
+**Automatic language.** English, Turkish, German, Spanish and Russian messages and help follow the effective language. Players can save a preference, and administrators can choose one language for everyone.
 
 **Works with your server.** DyClaim and other supported protection adapters are optional. Add Vault and an economy provider for paid RTP, or use core teleportation without them.
 
@@ -44,7 +58,7 @@ Java 17 bytecode; use the runtime required by your server. Minecraft 1.20.x–26
 
 ![DyRTP and BetterRTP median command-to-teleport time across five scenarios](docs/images/DyRTP-vs-BetterRTP-en.png)
 
-On Paper 26.1.2 with one non-OP client, DyRTP had the lower observed median in all five matched-setting samples. Each plugin completed 70 requests. These are command-to-teleport durations, not CPU/RAM measurements, and do not establish a universal speed or safety advantage. Protection and economy were disabled for the timing comparison.
+Measured with DyRTP 1.1.0 on Paper 26.1.2 with one non-OP client: DyRTP had the lower observed median in all five matched-setting samples. Each plugin completed 70 requests. These are command-to-teleport durations, not CPU/RAM measurements, and do not establish a universal speed or safety advantage. Protection and economy were disabled for the timing comparison.
 
 [Method, results and limitations](docs/betterrtp-comparison.md)
 
@@ -54,7 +68,8 @@ On Paper 26.1.2 with one non-OP client, DyRTP had the lower observed median in a
 |---|---|
 | `/dyrtp` or `/dyr` | Search for a safe random destination |
 | `/dyrtp help` | Show commands available to you |
-| `/dyrtp language <auto/en/tr>` | Save your language preference |
+| `/dyrtp biome <biome>` | Teleport to a random place in a chosen biome |
+| `/dyrtp language <auto/en/tr/de/es/ru>` | Save your language preference |
 | `/dyrtp confirm` | Confirm your current paid RTP request |
 | `/dyrtp cancel` | Reject your pending confirmation |
 | `/dyrtp admin help` or `/dyra` | Show administration commands |
@@ -65,7 +80,7 @@ On Paper 26.1.2 with one non-OP client, DyRTP had the lower observed median in a
 | `/dyrtp admin delay <seconds/off>` | Configure the teleport warmup |
 | `/dyrtp admin radius min <blocks>` | Configure the minimum radius |
 | `/dyrtp admin radius max <blocks>` | Configure the maximum radius |
-| `/dyrtp admin language <auto/en/tr>` | Configure the global language |
+| `/dyrtp admin language <auto/en/tr/de/es/ru>` | Configure the global language |
 | `/dyrtp admin reload` | Validate and reload settings and messages |
 
 `/dyr`, `/rtp`, `/randomtp`, `/wild`, `/wildtp`, `/rastgeletp`, `/rastgeleteleport`, `/forcertp` and `/rtpforce` remain accepted. Existing English, Turkish and ASCII spellings remain accepted when typed manually, including `yonetim`. Help and TAB show the effective language, with the administration branch consistently named `admin`. Player names and other data arguments are never translated. Administrative settings and force commands work from the console; self-RTP and personal language changes require a player.
@@ -76,7 +91,7 @@ Legacy `/onayla`, `/confirm`, `/reddet` and `/cancel` registrations remain for c
 
 ## Language and permissions
 
-Global `language.default: en` or `tr` overrides saved preferences and client locale for messages, help and TAB. With `auto`, saved preference takes priority, then client locale when enabled, with English as the fallback. `save-player-choice` controls whether stored choices are used.
+Global `language.default: en`, `tr`, `de`, `es` or `ru` overrides saved preferences and client locale for messages, help and TAB. With `auto`, saved preference takes priority, then client locale when enabled, with English as the fallback. `save-player-choice` controls whether stored choices are used.
 
 | Permission | Bukkit default | Purpose |
 |---|---|---|
@@ -85,6 +100,10 @@ Global `language.default: en` or `tr` overrides saved preferences and client loc
 | `dyrtp.bypass.cooldown` | op | Skip cooldown |
 | `dyrtp.bypass.warmup` | op | Skip warmup |
 | `dyrtp.bypass.economy` | op | Skip payment |
+| `dyrtp.biome` | true | Choose a biome with `/dyrtp biome` |
+| `dyrtp.cooldown.<seconds>` | not set | Own cooldown; the lowest wins |
+| `dyrtp.price.<amount>` | not set | Own price; the lowest wins |
+| `dyrtp.radius.<blocks>` | not set | Own farthest distance; the highest wins |
 
 Permission checks use Bukkit's effective permission result, including explicit denial. Being OP does not provide an additional unconditional bypass. Each bypass permission is checked separately; there is no new protection bypass.
 
@@ -96,7 +115,7 @@ Searches have configurable attempt, batch, time and server-wide concurrency limi
 
 A player has one active operation. Quit, death, external teleport/world change, reload and shutdown invalidate the relevant pending operation. Movement/damage cancellation applies during warmup according to the existing settings. Final validation uses fresh terrain and protection state after warmup and after supported teleport-event redirects; it rejects disabled worlds. Teleport failure or cancellation does not start cooldown or emit success. Successful teleport starts cooldown, preserving the original timing. Existing blindness is kept; cleanup only removes an effect matching DyRTP's own effect.
 
-First-join and death RTP remain disabled by default. Death RTP respects `skip-if-bed-or-anchor`. Their delay callbacks are invalidated by lifecycle changes. Forced RTP requires the administrator's permission and retains the existing cause policies for cooldown/payment.
+First-join and death RTP remain disabled by default. `first-join-rtp.world` and `death-rtp.world` send players to another world; an empty value keeps the current behaviour. Death RTP respects `skip-if-bed-or-anchor`. Their delay callbacks are invalidated by lifecycle changes. Forced RTP requires the administrator's permission and retains the existing cause policies for cooldown/payment.
 
 ## Protection integrations
 
@@ -120,13 +139,13 @@ The existing Modrinth checker requests versions for the current Minecraft versio
 
 ## Build and verification
 
-Release listing: Minecraft 1.20.x through currently available 26.x releases on Bukkit, Spigot, Paper and Purpur. Compile target: Java 17 and Purpur/Bukkit API 1.20.4. Runtime Java requirements follow your Minecraft server version. The fresh 1.0.1 checks exercised Paper 26.1.2 build 74 on Java 25; the listing is broader than the live matrix and does not establish verified compatibility with every Minecraft, Spigot, Purpur or protection-provider version.
+Release listing: Minecraft 1.20.x through currently available 26.x releases on Bukkit, Spigot, Paper and Purpur. Compile target: Java 17 and Purpur/Bukkit API 1.20.4. Runtime Java requirements follow your Minecraft server version. The 1.1.0 checks exercised Purpur 1.20.4 build 2176 on Java 21 and Spigot 26.3 on Java 25; the listing is broader than the live matrix and does not establish verified compatibility with every Minecraft, Spigot, Purpur or protection-provider version.
 
 ```text
 gradle clean build
 ```
 
-Use Gradle 9.1 with Java 25, or a Gradle/JDK combination supporting the Java 17 source target. The JAR is `build/libs/DyRTP-1.0.1.jar`. JUnit/Mockito tests are test dependencies only. See [verification record](docs/verification.md) for automated versus actual server coverage and limitations, and [changelog](CHANGELOG.md) for changes from the last stable 1.0.0 release.
+Use Gradle 9.1 with Java 25, or a Gradle/JDK combination supporting the Java 17 source target. The JAR is `build/libs/DyRTP-1.1.0.jar`. JUnit/Mockito tests are test dependencies only. See [verification record](docs/verification.md) for automated versus actual server coverage and limitations, and [changelog](CHANGELOG.md) for changes from the last stable 1.0.0 release.
 
 An isolated [BetterRTP comparison](docs/betterrtp-comparison.md) records common command-to-teleport measurements across five scenarios. Results vary by profile; they do not establish a universal performance or safety advantage.
 
@@ -137,7 +156,7 @@ GNU Lesser General Public License v3.0 only (`LGPL-3.0-only`). See [LICENSE](LIC
 ## Get started
 
 1. Stop the server and back up the current JAR and complete `plugins/DyRTP/` folder.
-2. Install `DyRTP-1.0.1.jar` and start the server to generate any missing defaults.
+2. Install `DyRTP-1.1.0.jar` and start the server to generate any missing defaults.
 3. Configure your worlds, safety checks and English/Turkish messages.
 4. Run `/dyrtp admin reload` to apply valid settings.
 

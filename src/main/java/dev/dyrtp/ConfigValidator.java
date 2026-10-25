@@ -14,7 +14,7 @@ final class ConfigValidator {
         double cost = config.getDouble("economy.cost", 100);
         if (!Double.isFinite(cost) || cost < 0) invalid("economy.cost", "must be finite and non-negative");
         String language = config.getString("language.default", "auto");
-        if (!Set.of("auto", "en", "tr").contains(language)) invalid("language.default", "expected auto, en or tr");
+        if (!"auto".equals(language) && !dev.dyrtp.lang.Language.codes().contains(language)) invalid("language.default", "expected auto or one of " + dev.dyrtp.lang.Language.codes());
         bounded(config, "rtp.search.max-attempts", 1, 10000);
         bounded(config, "rtp.search.batch-size", 1, 64);
         bounded(config, "rtp.search.preload-radius", 0, 4);

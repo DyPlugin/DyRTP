@@ -19,6 +19,12 @@ public record WorldProfile(
         List<String> allowedBiomes
 ) {
 
+    /** The same profile with a player's own farthest distance from a dyrtp.radius.<blocks> permission; 0 keeps it. */
+    public WorldProfile withMaxRadius(int radius) {
+        if (radius <= minRadius) return this;
+        return new WorldProfile(world, useWorldBorder, centerX, centerZ, minRadius, radius, shape, minY, maxY, allowedBiomes);
+    }
+
     public static WorldProfile load(DyRTP plugin, World world) {
         ConfigurationSection defaults = plugin.getConfig().getConfigurationSection("rtp.default-world");
         ConfigurationSection custom = plugin.getConfig().getConfigurationSection("rtp.worlds." + world.getName());

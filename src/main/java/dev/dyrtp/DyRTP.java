@@ -2,6 +2,7 @@ package dev.dyrtp;
 
 import dev.dyrtp.command.DyRtpCommand;
 import dev.dyrtp.economy.EconomyService;
+import dev.dyrtp.lang.Language;
 import dev.dyrtp.lang.MessageService;
 import dev.dyrtp.listener.PlayerEventListener;
 import dev.dyrtp.protection.ProtectionService;
@@ -29,6 +30,10 @@ public class DyRTP extends JavaPlugin {
     private RtpService rtpService;
     private PlayerEventListener playerEventListener;
     private ModrinthUpdateChecker updateChecker;
+    private Object placeholders;
+    private dev.dyrtp.lib.bstats.bukkit.Metrics metrics;
+    /** bStats plugin id for DyRTP (https://bstats.org). */
+    static final int BSTATS_ID = 34913;
 
     @Override
     public void onEnable() {
@@ -42,10 +47,10 @@ public class DyRTP extends JavaPlugin {
         getConfig().options().copyDefaults(true);
         applyConfigUpgrades();
         saveConfig();
-        if (!new File(getDataFolder(), "messages_en.yml").exists()) saveResource("messages_en.yml", false);
-        if (!new File(getDataFolder(), "messages_tr.yml").exists()) saveResource("messages_tr.yml", false);
-        ensureMessageDefaults("messages_en.yml");
-        ensureMessageDefaults("messages_tr.yml");
+        for (Language language : Language.values()) {
+            if (!new File(getDataFolder(), language.fileName()).exists()) saveResource(language.fileName(), false);
+            ensureMessageDefaults(language.fileName());
+        }
 
         this.playerDataStore = new PlayerDataStore(this);
         this.messages = new MessageService(this, playerDataStore);
@@ -80,6 +85,8 @@ public class DyRTP extends JavaPlugin {
         }
 
         getServer().getPluginManager().registerEvents(playerEventListener, this);
+        startPlaceholders();
+        startMetrics();
         this.updateChecker = new ModrinthUpdateChecker(this, messages);
         this.updateChecker.start();
         getLogger().info("DyRTP v" + getDescription().getVersion() + " enabled.");
@@ -96,6 +103,8 @@ public class DyRTP extends JavaPlugin {
         if (updateChecker != null) {
             updateChecker.cancel();
         }
+        stopPlaceholders();
+        if (metrics != null) metrics.shutdown();
         getLogger().info("DyRTP disabled.");
     }
 
@@ -109,8 +118,7 @@ public class DyRTP extends JavaPlugin {
         getConfig().options().copyDefaults(true);
         applyConfigUpgrades();
         saveConfig();
-        ensureMessageDefaults("messages_en.yml");
-        ensureMessageDefaults("messages_tr.yml");
+        for (Language language : Language.values()) ensureMessageDefaults(language.fileName());
         playerDataStore.reload();
         messages.reload();
         economy.reload();
@@ -119,6 +127,8 @@ public class DyRTP extends JavaPlugin {
         if (updateChecker != null) {
             updateChecker.reload();
         }
+        stopPlaceholders();
+        startPlaceholders();
         return true;
     }
 
@@ -151,7 +161,10 @@ public class DyRTP extends JavaPlugin {
             YamlConfiguration staged = new YamlConfiguration();
             staged.load(new File(getDataFolder(), "config.yml"));
             ConfigValidator.validate(staged);
-            for (String name : new String[]{"messages_en.yml", "messages_tr.yml", "players.yml"}) {
+            java.util.List<String> names = new java.util.ArrayList<>(Language.values().length + 1);
+            for (Language language : Language.values()) names.add(language.fileName());
+            names.add("players.yml");
+            for (String name : names) {
                 File file = new File(getDataFolder(), name);
                 if (file.exists()) new YamlConfiguration().load(file);
             }
@@ -184,6 +197,45 @@ public class DyRTP extends JavaPlugin {
 
     public RtpService getRtpService() {
         return rtpService;
+    }
+
+    /** PlaceholderAPI classes are only touched when that plugin is present and the switch is on. */
+    private void startPlaceholders() {
+        if (placeholders != null || !getConfig().getBoolean("integrations.placeholderapi.enabled", true)) return;
+        org.bukkit.plugin.Plugin papi = getServer().getPluginManager().getPlugin("PlaceholderAPI");
+        if (papi == null || !papi.isEnabled()) return;
+        try {
+            placeholders = dev.dyrtp.hook.PlaceholderHook.register(this);
+            if (placeholders != null) getLogger().info("PlaceholderAPI placeholders registered (%dyrtp_...%).");
+        } catch (LinkageError | RuntimeException exception) {
+            getLogger().warning("PlaceholderAPI hook failed: " + exception);
+        }
+    }
+
+    private void stopPlaceholders() {
+        if (placeholders == null) return;
+        try { dev.dyrtp.hook.PlaceholderHook.unregister(placeholders); } catch (LinkageError | RuntimeException ignored) { }
+        placeholders = null;
+    }
+
+    public boolean placeholdersActive() { return placeholders != null; }
+
+    private void startMetrics() {
+        if (!getConfig().getBoolean("metrics.enabled", true)) return;
+        try {
+            metrics = new dev.dyrtp.lib.bstats.bukkit.Metrics(this, BSTATS_ID);
+            metrics.addCustomChart(new dev.dyrtp.lib.bstats.charts.SimplePie("language_mode", () -> getConfig().getString("language.default", "auto")));
+            metrics.addCustomChart(new dev.dyrtp.lib.bstats.charts.SimplePie("economy", () -> economy != null && economy.enabled() && economy.available() ? "On" : "Off"));
+            metrics.addCustomChart(new dev.dyrtp.lib.bstats.charts.SimplePie("cooldown", () -> getConfig().getBoolean("cooldown.enabled", false) ? "On" : "Off"));
+            metrics.addCustomChart(new dev.dyrtp.lib.bstats.charts.SimplePie("automatic_rtp", () -> {
+                boolean join = getConfig().getBoolean("first-join-rtp.enabled", false), death = getConfig().getBoolean("death-rtp.enabled", false);
+                return join && death ? "First join and death" : join ? "First join" : death ? "Death" : "Off";
+            }));
+            metrics.addCustomChart(new dev.dyrtp.lib.bstats.charts.SimplePie("placeholderapi", () -> placeholders != null ? "Yes" : "No"));
+            metrics.addCustomChart(new dev.dyrtp.lib.bstats.charts.SimplePie("dyclaim", () -> getServer().getPluginManager().isPluginEnabled("DyClaim") ? "Yes" : "No"));
+        } catch (RuntimeException exception) {
+            getLogger().warning("bStats could not start: " + exception.getMessage());
+        }
     }
 
     private void applyConfigUpgrades() {
@@ -243,12 +295,13 @@ public class DyRTP extends JavaPlugin {
                 target.set(key, text);
                 changed = true;
             } else if (target.get(key) instanceof String existing && value instanceof String text
-                    && !existing.equals(text) && automaticLabel(existing).equals(text)) {
+                    && !existing.equals(text) && automaticLabel(existing).equals(automaticLabel(text))) {
                 target.set(key, text);
                 changed = true;
             } else if (target.get(key) instanceof java.util.List<?> existing && value instanceof java.util.List<?> lines
                     && !existing.equals(lines)
-                    && existing.stream().map(line -> line instanceof String text ? automaticLabel(text) : line).toList().equals(lines)) {
+                    && existing.stream().map(line -> line instanceof String text ? automaticLabel(text) : line).toList()
+                            .equals(lines.stream().map(line -> line instanceof String text ? automaticLabel(text) : line).toList())) {
                 target.set(key, lines);
                 changed = true;
             }
@@ -256,7 +309,11 @@ public class DyRTP extends JavaPlugin {
         return changed;
     }
 
+    /** Rewrites untouched stock text from older versions: the short "Oto" label and the 1.1.0 language lists. */
     private static String automaticLabel(String text) {
-        return text.replace("Otomatik", "Oto").replace("otomatik", "oto");
+        return text.replace("Otomatik", "Oto").replace("otomatik", "oto")
+                .replace("<auto|en|tr>", "<auto|en|tr|de|es|ru>").replace("<oto|en|tr>", "<oto|en|tr|de|es|ru>")
+                .replace("<en|tr|auto>", "<en|tr|de|es|ru|auto>").replace("<en|tr|oto>", "<en|tr|de|es|ru|oto>")
+                .replace("&ftr&c.", "&ftr&7, &fde&7, &fes&7, &fru&c.");
     }
 }

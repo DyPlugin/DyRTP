@@ -5,6 +5,7 @@ import dev.dyrtp.lang.Language;
 import dev.dyrtp.lang.MessageService;
 import dev.dyrtp.protection.HookStatus;
 import dev.dyrtp.protection.ProtectionService;
+import dev.dyrtp.rtp.BiomeChoices;
 import dev.dyrtp.rtp.RtpCause;
 import dev.dyrtp.rtp.RtpService;
 import dev.dyrtp.storage.PlayerDataStore;
@@ -76,6 +77,9 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         if (matches(args[0], "language", "lang", "dil")) {
             return playerLanguage(sender, args);
         }
+        if (matches(args[0], "biome", "biyom")) {
+            return biome(sender, args);
+        }
         if (matches(args[0], "admin", "yönetim", "yonetim")) {
             return admin(sender, args);
         }
@@ -94,6 +98,32 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         rtpService.request(player, RtpCause.COMMAND);
+        return true;
+    }
+
+    private boolean biome(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            messages.send(sender, "general.player-only");
+            return true;
+        }
+        if (!sender.hasPermission("dyrtp.use") || !sender.hasPermission("dyrtp.biome")) {
+            messages.send(sender, "general.no-permission");
+            return true;
+        }
+        if (!plugin.getConfig().getBoolean("biome-selection.enabled", true)) {
+            messages.send(sender, "rtp.biome-disabled");
+            return true;
+        }
+        if (args.length < 2) {
+            messages.send(sender, "rtp.biome-usage");
+            return true;
+        }
+        String biome = BiomeChoices.match(plugin, String.join("_", java.util.Arrays.copyOfRange(args, 1, args.length)));
+        if (biome == null) {
+            messages.send(sender, "rtp.biome-unknown", Map.of("{biome}", args[1]));
+            return true;
+        }
+        rtpService.request(player, RtpCause.COMMAND, biome);
         return true;
     }
 
@@ -129,6 +159,9 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
                 messages.send(sender, "general.help-confirm");
             }
             messages.send(sender, "general.help-cancel");
+            if (sender.hasPermission("dyrtp.biome") && plugin.getConfig().getBoolean("biome-selection.enabled", true)) {
+                messages.send(sender, "general.help-biome");
+            }
             messages.send(sender, "general.help-language");
         }
         if (sender.hasPermission("dyrtp.admin")) {
@@ -228,7 +261,7 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         }
         String language = normalize(args[1]);
         language = normalizeLanguage(language);
-        if (!language.equals("en") && !language.equals("tr") && !language.equals("auto")) {
+        if (!language.equals("auto") && !Language.codes().contains(language)) {
             messages.send(sender, "general.invalid-language");
             return true;
         }
@@ -244,7 +277,7 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         }
         String language = normalize(args[2]);
         language = normalizeLanguage(language);
-        if (!language.equals("en") && !language.equals("tr") && !language.equals("auto")) {
+        if (!language.equals("auto") && !Language.codes().contains(language)) {
             messages.send(sender, "general.invalid-language");
             return true;
         }
@@ -442,14 +475,18 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
                 if (sender.hasPermission("dyrtp.use")) {
                     words.add(tr ? "ışınlan" : "rtp");
                     words.add(tr ? "onayla" : "confirm");
+                    if (biomeChoice(sender)) words.add(tr ? "biyom" : "biome");
                 }
             }
             if (sender.hasPermission("dyrtp.admin")) words.add("admin");
             return startsWith(args[0], words);
         }
+        if (args.length == 2 && matches(args[0], "biome", "biyom")) {
+            return biomeChoice(sender) ? startsWith(args[1], BiomeChoices.available(plugin)) : List.of();
+        }
         if (args.length == 2 && matches(args[0], "language", "lang", "dil")) {
             return sender instanceof Player
-                    ? startsWith(args[1], tr ? List.of("oto", "en", "tr") : List.of("auto", "en", "tr"))
+                    ? startsWith(args[1], languageChoices(tr))
                     : List.of();
         }
         if (args.length == 0 || !sender.hasPermission("dyrtp.admin")
@@ -465,7 +502,7 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             return startsWith(args[2], Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());
         }
         if (args.length == 3 && matches(args[1], "language", "lang", "dil")) {
-            return startsWith(args[2], tr ? List.of("oto", "en", "tr") : List.of("auto", "en", "tr"));
+            return startsWith(args[2], languageChoices(tr));
         }
         if (args.length == 3 && matches(args[1], "economy", "ekonomi")) {
             return startsWith(args[2], tr ? List.of("aç", "kapat") : List.of("on", "off"));
@@ -510,11 +547,19 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
     }
 
     private String displayLanguage(CommandSender sender, String language) {
-        return switch (language) {
-            case "tr" -> messages.get(sender, "value.language-tr");
-            case "en" -> messages.get(sender, "value.language-en");
-            default -> messages.get(sender, "value.language-auto");
-        };
+        return Language.codes().contains(language) ? messages.get(sender, "value.language-" + language) : messages.get(sender, "value.language-auto");
+    }
+
+    private boolean biomeChoice(CommandSender sender) {
+        return sender instanceof Player && sender.hasPermission("dyrtp.use") && sender.hasPermission("dyrtp.biome")
+                && plugin.getConfig().getBoolean("biome-selection.enabled", true);
+    }
+
+    private static List<String> languageChoices(boolean turkish) {
+        List<String> choices = new java.util.ArrayList<>();
+        choices.add(turkish ? "oto" : "auto");
+        choices.addAll(Language.codes());
+        return choices;
     }
 
     private Player findOnlinePlayer(String input) {

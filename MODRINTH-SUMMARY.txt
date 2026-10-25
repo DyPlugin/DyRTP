@@ -1,1 +1,1 @@
-Lightweight random teleportation with safety checks, DyClaim integration, and EN/TR support.
+Safe random teleports with biome choice, rank-based limits, DyClaim support and five languages.

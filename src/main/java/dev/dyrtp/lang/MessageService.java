@@ -33,10 +33,10 @@ public class MessageService {
     public void reload() {
         messages.clear();
         bundledMessages.clear();
-        messages.put(Language.EN, YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "messages_en.yml")));
-        messages.put(Language.TR, YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "messages_tr.yml")));
-        bundledMessages.put(Language.EN, bundled("messages_en.yml"));
-        bundledMessages.put(Language.TR, bundled("messages_tr.yml"));
+        for (Language language : Language.values()) {
+            messages.put(language, YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), language.fileName())));
+            bundledMessages.put(language, bundled(language.fileName()));
+        }
     }
 
     public Language language(CommandSender sender) {
@@ -52,9 +52,10 @@ public class MessageService {
                 return Language.fromCode(saved, fallback);
             }
             if (plugin.getConfig().getBoolean("language.use-player-locale", true)) {
+                // The client locale (for example de_de) picks a bundled language; others fall back to English.
                 String locale = player.getLocale();
-                if (locale != null && locale.toLowerCase(Locale.ROOT).startsWith("tr")) {
-                    return Language.TR;
+                if (locale != null && locale.length() >= 2) {
+                    return Language.fromCode(locale.substring(0, 2).toLowerCase(Locale.ROOT), Language.EN);
                 }
                 return Language.EN;
             }
@@ -79,7 +80,15 @@ public class MessageService {
         if (text == null || text.equals(path)) {
             text = bundledMessages.get(Language.EN).getString(path, path);
         }
-        return Colors.color(apply(text, placeholders));
+        return Colors.color(apply(text, escaped(placeholders)));
+    }
+
+    /** Placeholder values are data (names, numbers, typed input); their MiniMessage tags are never applied. */
+    private static Map<String, String> escaped(Map<String, String> placeholders) {
+        if (placeholders.isEmpty()) return placeholders;
+        Map<String, String> out = new HashMap<>();
+        placeholders.forEach((key, value) -> out.put(key, Colors.escapeTags(value)));
+        return out;
     }
 
     public List<String> getList(CommandSender sender, String path) {

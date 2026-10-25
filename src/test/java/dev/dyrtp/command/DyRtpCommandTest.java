@@ -126,7 +126,7 @@ class DyRtpCommandTest {
         DyRtpCommand executor = new DyRtpCommand(null, messages, null, null, null);
         assertEquals(java.util.List.of("yardım", "dil", "reddet", "ışınlan", "onayla", "admin"),
                 executor.onTabComplete(player, command, "dyrtp", new String[]{""}));
-        assertEquals(java.util.List.of("oto", "en", "tr"),
+        assertEquals(java.util.List.of("oto", "en", "tr", "de", "es", "ru"),
                 executor.onTabComplete(player, command, "dyrtp", new String[]{"dil", ""}));
         assertFalse(executor.onTabComplete(player, command, "dyrtp", new String[]{"admin", ""}).contains("reload"));
     }

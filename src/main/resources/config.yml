@@ -3,10 +3,10 @@ prefix: '&7[&aDyRTP&7]'
 config-version: 9
 
 language:
-  # auto: saved player choice, then client locale; en/tr overrides all players and console.
-  # Available: auto, en, tr
+  # auto: saved player choice, then client locale; any other value overrides all players and console.
+  # Available: auto, en, tr, de, es, ru
   default: auto
-  # If enabled, DyRTP picks Turkish for players whose Minecraft locale starts with tr_.
+  # If enabled, DyRTP picks the player's Minecraft language when it is one of the available ones.
   use-player-locale: true
   # If enabled, /dyrtp language saves the player's choice in players.yml.
   save-player-choice: true
@@ -17,11 +17,15 @@ rtp:
   enabled: true
   # Worlds listed here cannot use normal /rtp unless an override is configured below.
   disabled-worlds: []
+  # dyrtp.radius.<blocks> permissions replace max-radius for a player or group; the highest one wins.
+  permission-radius: true
   # Redirect RTP requests from one world to another.
   # Format: from_world: to_world
   world-overrides: {}
   default-world:
-    use-world-border: false
+    # Read the center and size from the vanilla /worldborder; max-radius still caps the distance.
+    # Destinations outside the world border are always rejected, whatever this is set to.
+    use-world-border: true
     center-x: 0
     center-z: 0
     min-radius: 500
@@ -121,6 +125,8 @@ cooldown:
   # Seconds; starts after a successful teleport.
   seconds: 300
   per-world: false
+  # dyrtp.cooldown.<seconds> permissions replace 'seconds' for a player or group; the lowest one wins.
+  permission-overrides: true
 
 economy:
   # Paid RTP requires Vault plus a registered economy provider.
@@ -129,6 +135,8 @@ economy:
   # Default teleport price used when paid RTP is enabled without a custom price.
   # Must be finite and non-negative; 0 is free.
   cost: 100.0
+  # dyrtp.price.<amount> permissions replace 'cost' for a player or group; the lowest one wins.
+  permission-prices: true
   # Debit immediately before teleport; true refunds a rejected/failed teleport once.
   # false retains a successful debit even when teleport subsequently fails.
   charge-on-success-only: true
@@ -137,15 +145,28 @@ economy:
     enabled: true
     timeout-seconds: 30
 
+biome-selection:
+  # Players with dyrtp.biome can use /rtp biome <biome> to land in a chosen biome.
+  enabled: true
+  # Biomes players may choose, for example [desert, jungle, cherry_grove]. Empty allows every biome that is not blacklisted.
+  biomes: []
+  # A biome search tries more spots than a normal one: 1-10000 attempts and 1-300 seconds.
+  max-attempts: 1000
+  timeout-seconds: 60
+
 first-join-rtp:
   enabled: false
   delay-seconds: 2
+  # World to send new players to, for example survival. Empty uses the world they joined in.
+  world: ''
   set-as-respawn: false
   ignore-cooldown: true
   ignore-economy: true
 
 death-rtp:
   enabled: false
+  # World to send players to after death. Empty uses the world they respawn in.
+  world: ''
   # If true, death RTP is skipped when the respawn was a bed or respawn anchor.
   skip-if-bed-or-anchor: true
   delay-ticks: 5
@@ -222,3 +243,12 @@ protection:
     #     static-accessor: getInstance
     #     method: isClaimed
     #     claimed-when-result-is: true
+
+integrations:
+  # %dyrtp_cooldown%, %dyrtp_price%, %dyrtp_ready% and more when PlaceholderAPI is installed.
+  placeholderapi:
+    enabled: true
+
+metrics:
+  # Anonymous usage statistics on https://bstats.org/plugin/bukkit/DyRTP/34913. Also off when bStats is disabled globally.
+  enabled: true

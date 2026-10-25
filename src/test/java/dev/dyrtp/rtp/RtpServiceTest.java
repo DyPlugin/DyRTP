@@ -20,6 +20,27 @@ import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RtpServiceTest {
+    @Test void firstJoinAndDeathRtpUseTheConfiguredWorldAndFallBackWhenItIsMissing() {
+        try (Fixture f = new Fixture()) {
+            World survival = mock(World.class);
+            when(survival.getName()).thenReturn("survival");
+            when(survival.getUID()).thenReturn(UUID.randomUUID());
+            f.bukkit.when(() -> Bukkit.getWorld("survival")).thenReturn(survival);
+            var events = org.mockito.ArgumentCaptor.forClass(org.bukkit.event.Event.class);
+            when(f.plugin.getLogger()).thenReturn(java.util.logging.Logger.getLogger("test"));
+            f.config.set("first-join-rtp.world", "survival");
+            f.service.request(f.player, RtpCause.FIRST_JOIN);
+            f.service.cancelSilently(f.player);
+            f.config.set("death-rtp.world", "missing");
+            f.service.request(f.player, RtpCause.DEATH);
+            f.service.cancelSilently(f.player);
+            f.service.request(f.player, RtpCause.COMMAND);
+            verify(f.pluginManager, atLeast(3)).callEvent(events.capture());
+            var worlds = events.getAllValues().stream().filter(e -> e instanceof dev.dyrtp.api.event.DyRtpRequestEvent)
+                    .map(e -> ((dev.dyrtp.api.event.DyRtpRequestEvent) e).getWorld()).toList();
+            assertEquals(java.util.List.of(survival, f.world, f.world), worlds, "first join goes to survival; a missing death world and /rtp use the current world");
+        }
+    }
     @Test void twoPlayersSharingDestinationKeepTicketUntilBothWarmupsEnd() {
         try (Fixture f = new Fixture()) {
             f.config.set("warmup.enabled", true); f.config.set("warmup.seconds", 3);
@@ -91,7 +112,7 @@ class RtpServiceTest {
             field.setAccessible(true);
             Class<?> quoteType = Class.forName("dev.dyrtp.rtp.RtpService$PendingConfirmation");
             var constructor = quoteType.getDeclaredConstructors()[0]; constructor.setAccessible(true);
-            Object quote = constructor.newInstance(RtpCause.COMMAND, 0L, f.world.getUID(), f.world.getUID(), 10D, "expired");
+            Object quote = constructor.newInstance(RtpCause.COMMAND, 0L, f.world.getUID(), f.world.getUID(), 10D, "expired", null);
             @SuppressWarnings("unchecked") var quotes = (java.util.Map<UUID, Object>) field.get(f.service);
             quotes.put(f.player.getUniqueId(), quote);
             f.service.confirm(f.player, "expired");
@@ -172,6 +193,19 @@ class RtpServiceTest {
             verify(f.finder.constructed().get(0), never()).find(any(), any());
             f.service.confirm(f.player);
             verify(f.finder.constructed().get(0)).find(any(), any());
+        }
+    }
+    @Test void chosenBiomeReachesTheSearchAndSurvivesThePaymentConfirmation() {
+        try (Fixture f = new Fixture()) {
+            paid(f);
+            f.config.set("economy.confirmation.enabled", true);
+            f.service.request(f.player, RtpCause.COMMAND, "desert");
+            verify(f.finder.constructed().get(0), never()).find(any(), any(), any(), anyInt());
+            f.service.confirm(f.player);
+            verify(f.finder.constructed().get(0)).find(eq(f.world), any(), eq("desert"), anyInt());
+            f.service.cancelSilently(f.player);
+            f.service.request(f.player, RtpCause.FORCE);
+            verify(f.finder.constructed().get(0)).find(eq(f.world), any(), isNull(), anyInt());
         }
     }
     private static void paid(Fixture f) {
@@ -353,6 +387,8 @@ class RtpServiceTest {
         final MockedConstruction<LocationFinder> finder;
         final RtpService service;
         Fixture() {
+            // The per-player price follows the configured price unless a test sets dyrtp.price permissions.
+            when(economy.cost(any(Player.class))).thenAnswer(call -> economy.cost());
             when(plugin.getConfig()).thenReturn(config);
             when(plugin.isEnabled()).thenReturn(true);
             Server server = mock(Server.class);
@@ -374,7 +410,11 @@ class RtpServiceTest {
             bukkit = mockStatic(Bukkit.class);
             bukkit.when(Bukkit::isPrimaryThread).thenReturn(true);
             bukkit.when(Bukkit::getPluginManager).thenReturn(pluginManager);
-            finder = mockConstruction(LocationFinder.class, (mock, context) -> when(mock.find(any(), any())).thenReturn(result));
+            finder = mockConstruction(LocationFinder.class, (mock, context) -> {
+                when(mock.find(any(), any())).thenReturn(result);
+                when(mock.find(any(), any(), any())).thenAnswer(call -> mock.find(call.getArgument(0), call.getArgument(1)));
+                when(mock.find(any(), any(), any(), anyInt())).thenAnswer(call -> mock.find(call.getArgument(0), call.getArgument(1)));
+            });
             service = new RtpService(plugin, messages, economy, mock(ProtectionService.class));
         }
         public void close() { finder.close(); bukkit.close(); }

@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'dev.dyrtp'
-version = '1.0.1'
+version = '1.1.0'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -14,16 +14,24 @@ repositories {
     mavenCentral()
     maven { url = 'https://repo.purpurmc.org/snapshots' }
     maven { url = 'https://jitpack.io' }
+    maven { url = 'https://repo.extendedclip.com/releases/' }
 }
 
 dependencies {
     compileOnly 'org.purpurmc.purpur:purpur-api:1.20.4-R0.1-SNAPSHOT'
     compileOnly 'com.github.MilkBowl:VaultAPI:1.7.1'
+    compileOnly 'me.clip:placeholderapi:2.12.3'
+    // Provided by Paper, Purpur and Folia; not bundled. Spigot keeps '&' colour codes only.
+    compileOnly 'net.kyori:adventure-text-minimessage:4.16.0'
+    compileOnly 'net.kyori:adventure-text-serializer-legacy:4.16.0'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation 'org.mockito:mockito-core:5.15.2'
     testImplementation 'org.purpurmc.purpur:purpur-api:1.20.4-R0.1-SNAPSHOT'
     testImplementation 'com.github.MilkBowl:VaultAPI:1.7.1'
+    testImplementation 'me.clip:placeholderapi:2.12.3'
+    testImplementation 'net.kyori:adventure-text-minimessage:4.16.0'
+    testImplementation 'net.kyori:adventure-text-serializer-legacy:4.16.0'
 }
 
 test { useJUnitPlatform() }

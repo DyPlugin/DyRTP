@@ -38,6 +38,7 @@ public class RtpService {
     private final MessageService messages;
     private final EconomyService economy;
     private final CooldownService cooldownService;
+    private final dev.dyrtp.rank.RankRules ranks;
     private final LocationFinder locationFinder;
     private final Map<UUID, PendingTeleport> pending = new ConcurrentHashMap<>();
     private final Map<UUID, PendingConfirmation> confirmations = new ConcurrentHashMap<>();
@@ -53,6 +54,7 @@ public class RtpService {
         this.messages = messages;
         this.economy = economy;
         this.cooldownService = new CooldownService(plugin);
+        this.ranks = new dev.dyrtp.rank.RankRules(plugin);
         this.locationFinder = new LocationFinder(plugin, protection);
     }
 
@@ -61,10 +63,16 @@ public class RtpService {
     }
 
     public void request(Player player, RtpCause cause) {
-        request(player, cause, null);
+        request(player, cause, null, null);
     }
 
-    private void request(Player player, RtpCause cause, PendingConfirmation confirmed) {
+    /** Like request(player, cause), but only places in the given biome qualify; null means any biome. */
+    public void request(Player player, RtpCause cause, String biome) {
+        request(player, cause, null, biome);
+    }
+
+    private void request(Player player, RtpCause cause, PendingConfirmation confirmed, String biome) {
+        if (confirmed != null) biome = confirmed.biome();
         if (!player.isOnline() || player.isDead() || !plugin.isEnabled()) return;
         if (cause == RtpCause.COMMAND && !player.hasPermission("dyrtp.use")) {
             messages.send(player, "general.no-permission");
@@ -81,7 +89,7 @@ public class RtpService {
             return;
         }
 
-        World world = resolveWorld(player.getWorld());
+        World world = targetWorld(player, cause);
         if (world == null) {
             sendRtp(player, "rtp.world-disabled");
             return;
@@ -107,7 +115,7 @@ public class RtpService {
             }
         }
 
-        double quotedCost = costApplies(player, cause) ? economy.cost() : 0;
+        double quotedCost = costApplies(player, cause) ? economy.cost(player) : 0;
         if (confirmed != null && (!confirmed.world().equals(world.getUID())
                 || !confirmed.sourceWorld().equals(player.getWorld().getUID())
                 || Double.compare(confirmed.cost(), quotedCost) != 0)) {
@@ -129,12 +137,12 @@ public class RtpService {
                 return;
             }
             if (confirmed == null && plugin.getConfig().getBoolean("economy.confirmation.enabled", true)) {
-                askConfirmation(player, cause, world, quotedCost);
+                askConfirmation(player, cause, world, quotedCost, biome);
                 return;
             }
         }
 
-        searchAndTeleport(player, world, cause, quotedCost);
+        searchAndTeleport(player, world, cause, quotedCost, biome);
     }
 
     public void confirm(Player player) {
@@ -153,7 +161,7 @@ public class RtpService {
             return;
         }
         sendRtp(player, "rtp.confirmed");
-        request(player, confirmation.cause(), confirmation);
+        request(player, confirmation.cause(), confirmation, confirmation.biome());
     }
 
     public void reject(Player player) {
@@ -262,7 +270,7 @@ public class RtpService {
         pending.put(player.getUniqueId(), new PendingTeleport(task, player.getLocation()));
     }
 
-    private void searchAndTeleport(Player player, World world, RtpCause cause, double cost) {
+    private void searchAndTeleport(Player player, World world, RtpCause cause, double cost, String biome) {
         if (!player.isOnline()) {
             return;
         }
@@ -275,7 +283,8 @@ public class RtpService {
         sendRtp(player, "rtp.searching-safe");
         sendActionbar(player, messages.get(player, "rtp.searching-safe"));
 
-        request.search = locationFinder.find(world, request.origin);
+        request.biome = biome;
+        request.search = locationFinder.find(world, request.origin, biome, ranks.maxRadius(player));
         request.search.whenComplete((result, error) -> runMain(() -> {
             if (!current(request)) return;
             if (!player.isOnline() || player.isDead() || !player.getWorld().equals(request.origin.getWorld())) {
@@ -326,7 +335,7 @@ public class RtpService {
             return;
         }
 
-        double currentCost = costApplies(player, cause) ? economy.cost() : 0;
+        double currentCost = costApplies(player, cause) ? economy.cost(player) : 0;
         if (Double.compare(currentCost, request.cost) != 0) {
             cancelSilently(player);
             sendRtp(player, "rtp.confirmation-changed");
@@ -406,6 +415,27 @@ public class RtpService {
                 && locationFinder.isSafeNow(target, request.origin));
     }
 
+    /** Seconds until the player may use /rtp again in the world they would be sent to; 0 when ready. */
+    public long cooldownRemaining(Player player) {
+        World world = resolveWorld(player.getWorld());
+        return world == null ? 0L : cooldownService.remainingSeconds(player, world);
+    }
+
+    /** What /rtp would cost this player right now; 0 when it is free for them. */
+    public double price(Player player) {
+        return costApplies(player, RtpCause.COMMAND) ? economy.cost(player) : 0D;
+    }
+
+    public String formatCooldown(Player player, long seconds) {
+        return formatTime(player, seconds);
+    }
+
+    /** The world /rtp would search in from the player's current world, or null when RTP is not allowed there. */
+    public World destinationWorld(Player player) {
+        World world = resolveWorld(player.getWorld());
+        return world == null || plugin.getConfig().getStringList("rtp.disabled-worlds").contains(world.getName()) ? null : world;
+    }
+
     public boolean isTeleporting(Player player) {
         return teleporting.containsKey(player.getUniqueId());
     }
@@ -424,7 +454,8 @@ public class RtpService {
         if (!current(request)) return;
         cancelSilently(request.player);
         Bukkit.getPluginManager().callEvent(new DyRtpFailEvent(request.player, request.cause, attempts));
-        sendRtp(request.player, "rtp.failed-safe", Map.of("{attempts}", String.valueOf(attempts)));
+        if (request.biome != null) sendRtp(request.player, "rtp.biome-not-found", Map.of("{biome}", request.biome, "{attempts}", String.valueOf(attempts)));
+        else sendRtp(request.player, "rtp.failed-safe", Map.of("{attempts}", String.valueOf(attempts)));
         playSound(request.player, "feedback.sounds.failed");
     }
 
@@ -459,6 +490,19 @@ public class RtpService {
         request.blindness = null;
     }
 
+    /** First-join and death RTP can send players to a configured world, for example the survival world. */
+    private World targetWorld(Player player, RtpCause cause) {
+        String section = cause == RtpCause.FIRST_JOIN ? "first-join-rtp" : cause == RtpCause.DEATH ? "death-rtp" : null;
+        String name = section == null ? "" : plugin.getConfig().getString(section + ".world", "");
+        if (name == null || name.isBlank()) return resolveWorld(player.getWorld());
+        World configured = Bukkit.getWorld(name);
+        if (configured == null) {
+            plugin.getLogger().warning(section + ".world '" + name + "' is not loaded; using the player's current world.");
+            return resolveWorld(player.getWorld());
+        }
+        return configured;
+    }
+
     private World resolveWorld(World current) {
         String override = plugin.getConfig().getString("rtp.world-overrides." + current.getName());
         if (override == null || override.isBlank()) {
@@ -488,15 +532,15 @@ public class RtpService {
         return !cause.ignoreEconomy(plugin)
                 && economy.enabled()
                 && economy.available()
-                && economy.cost() > 0.0D
+                && economy.cost(player) > 0.0D
                 && !player.hasPermission("dyrtp.bypass.economy");
     }
 
-    private void askConfirmation(Player player, RtpCause cause, World world, double cost) {
+    private void askConfirmation(Player player, RtpCause cause, World world, double cost, String biome) {
         int timeout = Math.max(5, plugin.getConfig().getInt("economy.confirmation.timeout-seconds", 30));
         String token = UUID.randomUUID().toString();
         confirmations.put(player.getUniqueId(), new PendingConfirmation(cause, System.currentTimeMillis() + timeout * 1000L,
-                world.getUID(), player.getWorld().getUID(), cost, token));
+                world.getUID(), player.getWorld().getUID(), cost, token, biome));
         Map<String, String> placeholders = Map.of("{cost}", economy.format(cost));
         sendRtp(player, "rtp.confirm-price", placeholders);
 
@@ -597,6 +641,7 @@ public class RtpService {
         private final Location origin;
         private CompletableFuture<LocationFinder.SearchResult> search;
         private EconomyService.Withdrawal withdrawal;
+        private String biome;
         private PotionEffect blindness;
         private int blindnessAppliedAt;
 
@@ -611,7 +656,7 @@ public class RtpService {
 
     private record DestinationChunk(World world, int x, int z) { }
 
-    private record PendingConfirmation(RtpCause cause, long expiresAt, UUID world, UUID sourceWorld, double cost, String token) {
+    private record PendingConfirmation(RtpCause cause, long expiresAt, UUID world, UUID sourceWorld, double cost, String token, String biome) {
 
         private boolean expired() {
             return System.currentTimeMillis() > expiresAt;

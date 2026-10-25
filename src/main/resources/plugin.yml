@@ -2,11 +2,12 @@ name: DyRTP
 version: ${version}
 main: dev.dyrtp.DyRTP
 api-version: '1.20'
-description: Fast random teleport plugin with land-protection integration and EN/TR language support.
+description: Fast random teleport plugin with land-protection integration and English, Turkish, German, Spanish and Russian messages.
 author: DyPlugin
 website: https://github.com/DyPlugin/DyRTP
 softdepend:
   - DyClaim
+  - PlaceholderAPI
   - Vault
   - WorldGuard
   - GriefPrevention
@@ -68,6 +69,9 @@ commands:
 permissions:
   dyrtp.use:
     description: Allows using random teleport.
+    default: true
+  dyrtp.biome:
+    description: Allows /rtp biome to choose the destination biome.
     default: true
   dyrtp.admin:
     description: Allows using admin commands.
