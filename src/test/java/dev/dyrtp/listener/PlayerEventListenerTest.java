@@ -92,7 +92,7 @@ class PlayerEventListenerTest {
         verify(f.rtp).request(f.player, RtpCause.FIRST_JOIN);
     }
     private static class Fixture {
-        final DyRTP plugin = mock(DyRTP.class);
+        final DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
         final BukkitScheduler scheduler = mock(BukkitScheduler.class);
         final RtpService rtp = mock(RtpService.class);
         final Player player = mock(Player.class);

@@ -10,7 +10,7 @@ import static org.mockito.Mockito.*;
 
 class ChunkLoaderTest {
     @Test void loadingDisabledDoesNotGenerateUnloadedCandidateChunk() {
-        DyRTP plugin = mock(DyRTP.class);
+        DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
         YamlConfiguration config = new YamlConfiguration();
         config.set("rtp.search.load-chunks", false);
         when(plugin.getConfig()).thenReturn(config);

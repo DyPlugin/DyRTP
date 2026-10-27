@@ -1,6 +1,7 @@
 package dev.dyrtp.rtp;
 
 import dev.dyrtp.DyRTP;
+import dev.dyrtp.platform.Scheduler;
 import dev.dyrtp.protection.ProtectionSnapshot;
 import dev.dyrtp.protection.ProtectionService;
 import org.bukkit.Bukkit;
@@ -66,6 +67,12 @@ public class LocationFinder {
             }
         });
         return future;
+    }
+
+    /** A queued spot: its chunk is loaded first, then it is handed out like a search result with zero attempts. */
+    public CompletableFuture<SearchResult> ready(Location spot) {
+        return chunkLoader.load(spot.getWorld(), spot.getBlockX() >> 4, spot.getBlockZ() >> 4)
+                .thenApply(chunk -> new SearchResult(spot, 0));
     }
 
     /** Fresh checks on the server thread; never trusts the search's claim cache. */
@@ -136,7 +143,8 @@ public class LocationFinder {
                 continue;
             }
 
-            if (preferLoadedChunks && state.profile.world().isChunkLoaded(chunkX, chunkZ)) {
+            // Folia: a chunk of another region may not be inspected here, so every candidate takes the loader path.
+            if (!Scheduler.FOLIA && preferLoadedChunks && state.profile.world().isChunkLoaded(chunkX, chunkZ)) {
                 Location safe = checkCandidate(state, candidate);
                 if (safe != null) {
                     completeFound(state, safe);
@@ -146,8 +154,10 @@ public class LocationFinder {
             }
 
             state.inFlight++;
+            Location owner = new Location(state.profile.world(), candidate.x + 0.5D, 64, candidate.z + 0.5D);
             chunkLoader.load(state.profile.world(), chunkX, chunkZ).whenComplete((chunk, throwable) ->
-                    runMain(() -> {
+                    // The candidate is checked on the thread that owns it; the search continues on the main or global thread.
+                    plugin.scheduler().runAt(owner, () -> {
                         state.inFlight--;
                         if (state.future.isDone() || state.completing || !plugin.isEnabled()) {
                             return;
@@ -185,7 +195,8 @@ public class LocationFinder {
             state.future.complete(new SearchResult(null, state.attempts));
             return;
         }
-        plugin.getServer().getScheduler().runTask(plugin, () -> attemptSafely(state));
+        if (Scheduler.FOLIA) plugin.scheduler().runGlobal(() -> attemptSafely(state));
+        else plugin.getServer().getScheduler().runTask(plugin, () -> attemptSafely(state));
     }
 
     private Location checkCandidate(SearchState state, Candidate candidate) {
@@ -224,11 +235,7 @@ public class LocationFinder {
     }
 
     private void runMain(Runnable runnable) {
-        if (Bukkit.isPrimaryThread()) {
-            runnable.run();
-        } else {
-            plugin.getServer().getScheduler().runTask(plugin, runnable);
-        }
+        plugin.scheduler().runMain(runnable);
     }
 
     private Candidate candidate(WorldProfile profile) {
@@ -316,10 +323,11 @@ public class LocationFinder {
         private final Location origin;
         private final CompletableFuture<SearchResult> future;
         private final Map<Long, Boolean> chunkProtectionCache = new HashMap<>();
-        private int attempts;
-        private int maxAttempts = 160;
-        private int inFlight;
-        private boolean completing;
+        // On Folia the steps of one search run one after another on different region threads.
+        private volatile int attempts;
+        private volatile int maxAttempts = 160;
+        private volatile int inFlight;
+        private volatile boolean completing;
 
         private SearchState(WorldProfile profile, SafetyRules rules, ProtectionSnapshot protection, Location origin, CompletableFuture<SearchResult> future) {
             this.profile = profile;

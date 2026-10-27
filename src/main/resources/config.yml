@@ -1,6 +1,6 @@
 # Main display prefix. Color codes use the Bukkit '&' format.
 prefix: '&7[&aDyRTP&7]'
-config-version: 9
+config-version: 10
 
 language:
   # auto: saved player choice, then client locale; any other value overrides all players and console.
@@ -63,6 +63,12 @@ rtp:
     # If true, DyRTP waits for nearby preload chunks before teleporting.
     # Disable this for faster RTP; the target chunk is still loaded before teleporting.
     wait-for-preload: false
+  queue:
+    # Safe spots found ahead of time per world, so /rtp teleports without searching first: 0-20; 0 turns it off.
+    # Every spot is checked again before the teleport; biome choice and rank distances always search live.
+    size: 3
+    # Worlds to fill at startup, for example [world]. Other worlds are filled after their first /rtp.
+    worlds: []
   safety:
     # If true, normal worlds only use the real outdoor surface and never scan down into caves.
     surface-only: true
@@ -153,6 +159,19 @@ biome-selection:
   # A biome search tries more spots than a normal one: 1-10000 attempts and 1-300 seconds.
   max-attempts: 1000
   timeout-seconds: 60
+
+group:
+  # /dyrtp group <player> invites players; those who accept travel with the leader's next /rtp.
+  enabled: true
+  # Players per group including the leader: 2-16.
+  max-size: 4
+  # Members must stand within this many blocks of the leader when the RTP starts.
+  max-distance: 32
+  # Seconds an invitation stays open, and seconds a group lasts without an RTP.
+  invite-seconds: 60
+  expire-seconds: 300
+  # Members get the RTP cooldown too.
+  member-cooldown: true
 
 first-join-rtp:
   enabled: false
@@ -245,6 +264,9 @@ protection:
     #     claimed-when-result-is: true
 
 integrations:
+  # With DyHomes installed, a successful RTP offers a click that prepares /sethome.
+  dyhomes:
+    sethome-hint: true
   # %dyrtp_cooldown%, %dyrtp_price%, %dyrtp_ready% and more when PlaceholderAPI is installed.
   placeholderapi:
     enabled: true

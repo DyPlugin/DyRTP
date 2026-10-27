@@ -74,7 +74,7 @@ class EconomyServiceTest {
         verify(economy, never()).depositPlayer(any(Player.class), anyDouble());
     }
     private static class Fixture {
-        final DyRTP plugin = mock(DyRTP.class);
+        final DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
         final YamlConfiguration config = new YamlConfiguration();
         final EconomyService service;
         Fixture() {

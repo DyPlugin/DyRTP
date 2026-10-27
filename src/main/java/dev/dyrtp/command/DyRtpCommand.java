@@ -83,6 +83,9 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         if (matches(args[0], "admin", "yönetim", "yonetim")) {
             return admin(sender, args);
         }
+        if (matches(args[0], "group", "grup", "party")) {
+            return group(sender, args);
+        }
 
         messages.send(sender, "general.unknown-command");
         return true;
@@ -127,6 +130,111 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    /** /dyrtp group [player | join | decline | leave]: travel together with your next RTP. */
+    private boolean group(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            messages.send(sender, "general.player-only");
+            return true;
+        }
+        var groups = rtpService.groups();
+        if (!groups.enabled()) {
+            messages.send(sender, "group.disabled");
+            return true;
+        }
+        if (!sender.hasPermission("dyrtp.group")) {
+            messages.send(sender, "general.no-permission");
+            return true;
+        }
+        if (args.length >= 2 && matches(args[1], "join", "katil", "katıl", "accept", "kabul")) {
+            var invite = groups.accept(player, args.length > 2 ? args[2] : null);
+            if (invite == null) {
+                messages.send(sender, "group.no-invite");
+                return true;
+            }
+            messages.send(sender, "group.joined", Map.of("{leader}", invite.leaderName()));
+            Player leader = Bukkit.getPlayer(invite.leader());
+            if (leader != null) messages.send(leader, "group.member-joined", Map.of("{player}", player.getName()));
+            return true;
+        }
+        if (args.length >= 2 && matches(args[1], "decline", "reddet", "deny")) {
+            var invite = groups.decline(player, args.length > 2 ? args[2] : null);
+            if (invite == null) {
+                messages.send(sender, "group.no-invite");
+                return true;
+            }
+            messages.send(sender, "group.declined", Map.of("{leader}", invite.leaderName()));
+            Player leader = Bukkit.getPlayer(invite.leader());
+            if (leader != null) messages.send(leader, "group.member-declined", Map.of("{player}", player.getName()));
+            return true;
+        }
+        if (args.length >= 2 && matches(args[1], "leave", "ayril", "ayrıl", "disband", "dagit", "dağıt")) {
+            java.util.List<java.util.UUID> before = groups.members(player.getUniqueId());
+            java.util.UUID leader = groups.leave(player.getUniqueId());
+            if (leader == null) {
+                messages.send(sender, "group.none");
+            } else if (leader.equals(player.getUniqueId())) {
+                messages.send(sender, "group.disbanded");
+                for (java.util.UUID id : before) {
+                    Player member = Bukkit.getPlayer(id);
+                    if (member != null) messages.send(member, "group.disbanded-by", Map.of("{leader}", player.getName()));
+                }
+            } else {
+                messages.send(sender, "group.left");
+            }
+            return true;
+        }
+        if (args.length < 2) {
+            java.util.List<java.util.UUID> members = groups.members(player.getUniqueId());
+            java.util.UUID leaderId = groups.leaderOf(player.getUniqueId());
+            if (members.isEmpty() && leaderId == null) {
+                messages.send(sender, "group.usage");
+                return true;
+            }
+            java.util.UUID lead = members.isEmpty() ? leaderId : player.getUniqueId();
+            java.util.List<String> names = new ArrayList<>();
+            for (java.util.UUID id : groups.members(lead)) {
+                org.bukkit.OfflinePlayer member = Bukkit.getOfflinePlayer(id);
+                names.add(member.getName() == null ? id.toString().substring(0, 8) : member.getName());
+            }
+            org.bukkit.OfflinePlayer leaderPlayer = Bukkit.getOfflinePlayer(lead);
+            messages.send(sender, "group.list", Map.of("{leader}", String.valueOf(leaderPlayer.getName()),
+                    "{members}", String.join(", ", names), "{count}", String.valueOf(names.size() + 1),
+                    "{max}", String.valueOf(groups.maxSize())));
+            return true;
+        }
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) {
+            messages.send(sender, "general.player-not-found", Map.of("{player}", args[1]));
+            return true;
+        }
+        String token = java.util.UUID.randomUUID().toString();
+        switch (groups.invite(player, target, token)) {
+            case SELF -> messages.send(sender, "group.self");
+            case FULL -> messages.send(sender, "group.full", Map.of("{max}", String.valueOf(groups.maxSize())));
+            case ALREADY_MEMBER -> messages.send(sender, "group.already", Map.of("{player}", target.getName()));
+            case IN_OTHER_GROUP -> messages.send(sender, "group.in-other");
+            case SENT -> {
+                messages.send(sender, "group.invited", Map.of("{player}", target.getName()));
+                messages.send(target, "group.invite", Map.of("{leader}", player.getName()));
+                boolean turkish = messages.language(target) == Language.TR;
+                net.md_5.bungee.api.chat.TextComponent join = new net.md_5.bungee.api.chat.TextComponent(
+                        net.md_5.bungee.api.chat.TextComponent.fromLegacyText(messages.get(target, "group.join-button")));
+                join.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND,
+                        (turkish ? "/dyrtp:dyrtp grup katil " : "/dyrtp:dyrtp group join ") + token));
+                net.md_5.bungee.api.chat.TextComponent decline = new net.md_5.bungee.api.chat.TextComponent(
+                        net.md_5.bungee.api.chat.TextComponent.fromLegacyText(messages.get(target, "group.decline-button")));
+                decline.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND,
+                        (turkish ? "/dyrtp:dyrtp grup reddet " : "/dyrtp:dyrtp group decline ") + token));
+                try {
+                    target.spigot().sendMessage(join, new net.md_5.bungee.api.chat.TextComponent(" "), decline);
+                } catch (UnsupportedOperationException noChatComponents) {
+                    messages.send(target, "group.invite-plain");
+                }
+            }
+        }
+        return true;
+    }
+
     private boolean confirm(CommandSender sender, String token) {
         if (!(sender instanceof Player player)) {
             messages.send(sender, "general.player-only");
@@ -161,6 +269,9 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             messages.send(sender, "general.help-cancel");
             if (sender.hasPermission("dyrtp.biome") && plugin.getConfig().getBoolean("biome-selection.enabled", true)) {
                 messages.send(sender, "general.help-biome");
+            }
+            if (sender.hasPermission("dyrtp.group") && rtpService.groups().enabled()) {
+                messages.send(sender, "general.help-group");
             }
             messages.send(sender, "general.help-language");
         }
@@ -476,10 +587,16 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
                     words.add(tr ? "ışınlan" : "rtp");
                     words.add(tr ? "onayla" : "confirm");
                     if (biomeChoice(sender)) words.add(tr ? "biyom" : "biome");
+                    if (sender.hasPermission("dyrtp.group") && rtpService.groups().enabled()) words.add(tr ? "grup" : "group");
                 }
             }
             if (sender.hasPermission("dyrtp.admin")) words.add("admin");
             return startsWith(args[0], words);
+        }
+        if (args.length == 2 && matches(args[0], "group", "grup", "party") && sender.hasPermission("dyrtp.group")) {
+            List<String> words = new ArrayList<>(tr ? List.of("katil", "reddet", "ayril") : List.of("join", "decline", "leave"));
+            Bukkit.getOnlinePlayers().stream().filter(online -> !online.equals(sender)).map(Player::getName).forEach(words::add);
+            return startsWith(args[1], words);
         }
         if (args.length == 2 && matches(args[0], "biome", "biyom")) {
             return biomeChoice(sender) ? startsWith(args[1], BiomeChoices.available(plugin)) : List.of();

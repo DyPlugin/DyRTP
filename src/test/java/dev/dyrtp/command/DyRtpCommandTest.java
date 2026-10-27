@@ -73,7 +73,7 @@ class DyRtpCommandTest {
     }
     @Test void invalidPricesDoNotMutateConfiguration() {
         for (String value : new String[]{"-1", "NaN", "Infinity"}) {
-            DyRTP plugin = mock(DyRTP.class);
+            DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
             YamlConfiguration config = new YamlConfiguration();
             config.set("economy.cost", 100.0);
             when(plugin.getConfig()).thenReturn(config);
@@ -132,7 +132,7 @@ class DyRtpCommandTest {
     }
     @Test void negativeRadiusAndOversizedWarmupDoNotMutateSettings() {
         for (String[] args : new String[][]{{"admin", "minradius", "-1"}, {"admin", "delay", "86401"}, {"admin", "delay", "-1"}}) {
-            DyRTP plugin = mock(DyRTP.class);
+            DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
             YamlConfiguration config = new YamlConfiguration();
             config.set("rtp.default-world.min-radius", 500);
             config.set("rtp.default-world.max-radius", 5000);
@@ -230,7 +230,7 @@ class DyRtpCommandTest {
     }
     @Test void paidConfigurationRequiresProviderButFreeOrOffRemainsAvailable() {
         for (String[] args : new String[][]{{"admin", "price", "20"}, {"admin", "economy", "on"}, {"admin", "economy", "20"}, {"admin", "price", "0"}, {"admin", "economy", "off"}, {"admin", "economy", "0"}}) {
-            DyRTP plugin = mock(DyRTP.class);
+            DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
             var economy = mock(dev.dyrtp.economy.EconomyService.class);
             when(plugin.getEconomy()).thenReturn(economy);
             YamlConfiguration config = new YamlConfiguration();

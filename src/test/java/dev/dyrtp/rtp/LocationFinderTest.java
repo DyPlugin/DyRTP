@@ -84,7 +84,7 @@ class LocationFinderTest {
         }
     }
     private static final class BoundedFixture implements AutoCloseable {
-        final DyRTP plugin = mock(DyRTP.class);
+        final DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
         final YamlConfiguration config = new YamlConfiguration();
         final World world = mock(World.class);
         final ProtectionService protection = mock(ProtectionService.class);
@@ -109,7 +109,7 @@ class LocationFinderTest {
         public void close() { loaders.close(); bukkit.close(); }
     }
     @Test void finalValidationRejectsDisabledWorldBeforeAccessingTerrain() {
-        DyRTP plugin = mock(DyRTP.class);
+        DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
         YamlConfiguration config = new YamlConfiguration();
         config.set("rtp.disabled-worlds", java.util.List.of("blocked"));
         when(plugin.getConfig()).thenReturn(config);
@@ -122,7 +122,7 @@ class LocationFinderTest {
         }
     }
     @Test void completedInlineChunkLoadStopsLaunchingMoreCandidates() {
-        DyRTP plugin = mock(DyRTP.class);
+        DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
         Server server = mock(Server.class);
         when(plugin.getServer()).thenReturn(server);
         when(server.getScheduler()).thenReturn(mock(BukkitScheduler.class));
@@ -157,7 +157,7 @@ class LocationFinderTest {
     }
 
     @Test void protectionFailureCompletesSearchExceptionallyInsteadOfLeavingRequestPending() {
-        DyRTP plugin = mock(DyRTP.class);
+        DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
         Server server = mock(Server.class);
         when(plugin.getServer()).thenReturn(server);
         when(server.getScheduler()).thenReturn(mock(BukkitScheduler.class));

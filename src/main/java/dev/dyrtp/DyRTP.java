@@ -23,6 +23,7 @@ public class DyRTP extends JavaPlugin {
 
     private static DyRTP instance;
 
+    private dev.dyrtp.platform.Scheduler scheduler;
     private PlayerDataStore playerDataStore;
     private MessageService messages;
     private EconomyService economy;
@@ -52,6 +53,7 @@ public class DyRTP extends JavaPlugin {
             ensureMessageDefaults(language.fileName());
         }
 
+        this.scheduler = new dev.dyrtp.platform.Scheduler(this);
         this.playerDataStore = new PlayerDataStore(this);
         this.messages = new MessageService(this, playerDataStore);
         this.economy = new EconomyService(this);
@@ -87,9 +89,11 @@ public class DyRTP extends JavaPlugin {
         getServer().getPluginManager().registerEvents(playerEventListener, this);
         startPlaceholders();
         startMetrics();
+        // Worlds are loaded by now; fill the ready-spot queue in the background.
+        scheduler.runGlobal(() -> rtpService.queue().start());
         this.updateChecker = new ModrinthUpdateChecker(this, messages);
         this.updateChecker.start();
-        getLogger().info("DyRTP v" + getDescription().getVersion() + " enabled.");
+        getLogger().info("DyRTP " + getDescription().getVersion() + " enabled" + (dev.dyrtp.platform.Scheduler.FOLIA ? " (Folia)." : "."));
     }
 
     @Override
@@ -177,6 +181,12 @@ public class DyRTP extends JavaPlugin {
 
     public static DyRTP getInstance() {
         return instance;
+    }
+
+    /** Bukkit or Folia scheduling; never null after onEnable. */
+    public dev.dyrtp.platform.Scheduler scheduler() {
+        if (scheduler == null) scheduler = new dev.dyrtp.platform.Scheduler(this);
+        return scheduler;
     }
 
     public PlayerDataStore getPlayerDataStore() {

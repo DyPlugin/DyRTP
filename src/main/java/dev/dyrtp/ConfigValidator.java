@@ -21,13 +21,18 @@ final class ConfigValidator {
         bounded(config, "rtp.search.timeout-seconds", 1, 300);
         bounded(config, "rtp.search.max-concurrent-searches", 1, 64);
         bounded(config, "protection.claim-buffer-chunks", 0, 16);
+        bounded(config, "rtp.queue.size", 0, 20);
+        bounded(config, "group.max-size", 2, 16);
+        bounded(config, "group.max-distance", 1, 30000000);
+        bounded(config, "group.invite-seconds", 10, 3600);
+        bounded(config, "group.expire-seconds", 30, 86400);
         bounded(config, "rtp.safety.nearby-surface-radius", 0, 4);
         bounded(config, "warmup.seconds", 0, 86400);
         bounded(config, "cooldown.seconds", 0, Integer.MAX_VALUE);
         bounded(config, "economy.confirmation.timeout-seconds", 1, 86400);
         bounded(config, "first-join-rtp.delay-seconds", 0, 86400);
         bounded(config, "death-rtp.delay-ticks", 0, 1728000);
-        for (String path : Set.of("rtp.disabled-worlds", "rtp.safety.blacklisted-blocks",
+        for (String path : Set.of("rtp.queue.worlds", "rtp.disabled-worlds", "rtp.safety.blacklisted-blocks",
                 "rtp.safety.blacklisted-biomes", "rtp.default-world.allowed-biomes")) {
             stringList(config, path);
         }
@@ -40,7 +45,8 @@ final class ConfigValidator {
         }
         for (String key : config.getKeys(true)) {
             Object value = config.get(key);
-            if (key.endsWith(".enabled") || key.endsWith(".ignore-cooldown") || key.endsWith(".ignore-economy")) {
+            if (key.endsWith(".enabled") || key.endsWith(".ignore-cooldown") || key.endsWith(".ignore-economy")
+                    || key.equals("group.member-cooldown") || key.equals("integrations.dyhomes.sethome-hint")) {
                 if (!(value instanceof Boolean)) invalid(key, "expected true or false");
             }
         }

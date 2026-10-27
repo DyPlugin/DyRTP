@@ -4,11 +4,21 @@
 
 DyRTP is a command-based random teleport plugin for survival, SMP and economy servers. Help players find new places, choose where they can travel and configure each world without a GUI.
 
-DyRTP combines configurable world profiles, destination safety checks, optional protection hooks and economy support with a familiar command-based workflow. **Version 1.1.0** adds biome choice, cooldowns, prices and distances per rank, PlaceholderAPI placeholders, German, Spanish and Russian messages, MiniMessage formatting and a developer API, while preserving existing settings, aliases and player preferences.
+DyRTP combines configurable world profiles, destination safety checks, optional protection hooks and economy support with a familiar command-based workflow. **Version 1.2.0** runs on Folia from the same JAR and adds ready spots for instant teleports, group RTP and a DyHomes shortcut, while preserving existing settings, aliases and player preferences.
 
 ---
 
-## New in 1.1.0
+## New in 1.2.0
+
+**Folia.** The same JAR runs on Bukkit, Spigot, Paper, Purpur and Folia. On Folia every destination is checked on the thread that owns it.
+
+**Ready spots.** DyRTP finds a few safe spots per world ahead of time (`rtp.queue.size`, 3 by default), so `/rtp` can teleport without searching first. Each spot is checked again just before the teleport; if it changed, a live search takes over.
+
+**Travel together.** `/dyrtp group <player>` invites friends; those who accept with `/dyrtp group join` come along on the leader's next `/rtp` when they stand within `group.max-distance` blocks. Up to `group.max-size` players (4).
+
+**Set a home there.** With DyHomes installed, a successful RTP offers a click that prepares `/sethome`.
+
+## Added in 1.1.0
 
 **Choose a biome.** `/rtp biome <biome>` finds a safe spot in the chosen biome, with TAB suggestions. Server owners can limit the choice with `biome-selection.biomes` or turn it off; blacklisted biomes such as oceans can never be chosen.
 
@@ -34,13 +44,13 @@ DyRTP combines configurable world profiles, destination safety checks, optional 
 
 | Server | JAR |
 | --- | --- |
-| Bukkit, Spigot, Paper, Purpur | `DyRTP-1.1.0.jar` |
+| Bukkit, Spigot, Paper, Purpur, Folia | `DyRTP-1.2.0.jar` |
 
 Install **one** JAR per server. Stop the server and back up the complete DyRTP folder before replacing an older JAR. Existing world profiles, player preferences and custom translations are retained.
 
-Java 17 bytecode; use the runtime required by your server. Minecraft 1.20.x–26.x is the release listing; the 1.1.0 live checks used Purpur 1.20.4 / Java 21 and Spigot 26.3 / Java 25. Optional integrations must support your selected server too. Historical 1.0.0 downloads retain their original filenames.
+Java 17 bytecode; use the runtime required by your server. Minecraft 1.20.x–26.x is the release listing; the 1.2.0 live checks used Purpur 1.20.4, Folia 1.20.4, Spigot 26.3 and Paper 26.2. Optional integrations must support your selected server too. Historical 1.0.0 downloads retain their original filenames.
 
-[Downloads](https://github.com/DyPlugin/DyRTP/releases/tag/1.1.0) · [Compatibility notes](https://github.com/DyPlugin/DyRTP/blob/main/docs/verification.md)
+[Downloads](https://github.com/DyPlugin/DyRTP/releases/tag/1.2.0) · [Compatibility notes](https://github.com/DyPlugin/DyRTP/blob/main/docs/verification.md)
 
 ## Why DyRTP?
 
@@ -69,6 +79,8 @@ Measured with DyRTP 1.1.0 on Paper 26.1.2 with one non-OP client: DyRTP had the 
 | `/dyrtp` or `/dyr` | Search for a safe random destination |
 | `/dyrtp help` | Show commands available to you |
 | `/dyrtp biome <biome>` | Teleport to a random place in a chosen biome |
+| `/dyrtp group <player>` | Invite a player to travel with your next RTP |
+| `/dyrtp group join`, `decline`, `leave` | Answer an invitation or leave the group |
 | `/dyrtp language <auto/en/tr/de/es/ru>` | Save your language preference |
 | `/dyrtp confirm` | Confirm your current paid RTP request |
 | `/dyrtp cancel` | Reject your pending confirmation |

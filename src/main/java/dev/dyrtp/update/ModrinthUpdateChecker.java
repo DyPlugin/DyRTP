@@ -5,7 +5,7 @@ import dev.dyrtp.lang.MessageService;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
+import dev.dyrtp.platform.Scheduler;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -35,8 +35,7 @@ public class ModrinthUpdateChecker {
             .connectTimeout(Duration.ofSeconds(8))
             .build();
 
-    private BukkitTask repeatingTask;
-    private BukkitTask initialTask;
+    private Scheduler.Task repeatingTask;
     private volatile long generation;
     private final AtomicBoolean checking = new AtomicBoolean();
     private String lastNotifiedVersion = "";
@@ -48,13 +47,7 @@ public class ModrinthUpdateChecker {
 
     public void start() {
         cancel();
-        initialTask = Bukkit.getScheduler().runTaskLater(plugin, this::check, 60L);
-        repeatingTask = Bukkit.getScheduler().runTaskTimer(
-                plugin,
-                this::check,
-                CHECK_INTERVAL_MINUTES * 60L * 20L,
-                CHECK_INTERVAL_MINUTES * 60L * 20L
-        );
+        repeatingTask = plugin.scheduler().runGlobalTimer(this::check, 60L, CHECK_INTERVAL_MINUTES * 60L * 20L);
     }
 
     public void reload() {
@@ -63,7 +56,6 @@ public class ModrinthUpdateChecker {
 
     public void cancel() {
         generation++;
-        if (initialTask != null) { initialTask.cancel(); initialTask = null; }
         if (repeatingTask != null) {
             repeatingTask.cancel();
             repeatingTask = null;
@@ -75,15 +67,15 @@ public class ModrinthUpdateChecker {
         String current = plugin.getDescription().getVersion();
         String game = plugin.getServer().getBukkitVersion().split("-", 2)[0];
         String name = plugin.getServer().getName().toLowerCase(java.util.Locale.ROOT);
-        String loader = name.contains("purpur") ? "purpur" : name.contains("paper") ? "paper"
+        String loader = name.contains("folia") ? "folia" : name.contains("purpur") ? "purpur" : name.contains("paper") ? "paper"
                 : name.contains("spigot") ? "spigot" : "bukkit";
         long requestedGeneration = generation;
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+        plugin.scheduler().runAsync(() -> {
             try {
                 Optional<Release> latest = fetchLatestVersion(game, loader);
                 if (latest.isEmpty() || compareVersions(latest.get().version(), current) <= 0
                         || !plugin.isEnabled() || requestedGeneration != generation) return;
-                Bukkit.getScheduler().runTask(plugin, () -> {
+                plugin.scheduler().runGlobal(() -> {
                     if (requestedGeneration != generation || !plugin.isEnabled()) return;
                     Release release = latest.get();
                     if (release.version().equalsIgnoreCase(lastNotifiedVersion)) return;

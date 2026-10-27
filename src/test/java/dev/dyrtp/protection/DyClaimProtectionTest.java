@@ -33,7 +33,7 @@ class DyClaimProtectionTest {
     private DyClaimHook hook;
 
     @BeforeEach void setup() {
-        plugin = mock(DyRTP.class);
+        plugin = dev.dyrtp.TestPlugins.plugin();
         Server server = mock(Server.class);
         plugins = mock(PluginManager.class);
         world = mock(World.class);

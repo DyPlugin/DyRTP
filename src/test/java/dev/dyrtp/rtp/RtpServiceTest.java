@@ -374,8 +374,40 @@ class RtpServiceTest {
             verify(receipt, never()).refund();
         }
     }
+    @Test void aReadySpotIsUsedAndAnUnsafeOneFallsBackToALiveSearch() {
+        try (Fixture f = new Fixture()) {
+            f.config.set("rtp.queue.size", 1);
+            Location spot = new Location(f.world, 3000.5, 64, 3000.5);
+            LocationFinder finder = f.finder.constructed().get(0);
+            when(finder.ready(any())).thenAnswer(call -> CompletableFuture.completedFuture(new LocationFinder.SearchResult(call.getArgument(0), 0)));
+            f.result.complete(new LocationFinder.SearchResult(spot, 4));
+            f.service.queue().refill(f.world);
+            assertEquals(1, f.service.queue().ready(f.world), "the background search filled the queue");
+            when(finder.isSafeNow(any(), any())).thenReturn(true);
+            when(f.player.teleport(any(Location.class))).thenReturn(true);
+            f.service.request(f.player, RtpCause.COMMAND);
+            verify(finder).ready(spot);
+            verify(f.player).teleport(any(Location.class));
+            verify(finder, never()).find(eq(f.world), notNull());
+            f.service.cancelAll();
+            f.service.queue().refill(f.world);
+            when(finder.isSafeNow(any(), any())).thenReturn(false);
+            f.service.request(f.player, RtpCause.COMMAND);
+            verify(finder, atLeastOnce()).find(eq(f.world), notNull());
+            verify(f.messages).send(eq(f.player), eq("rtp.failed-safe"), anyMap());
+        }
+    }
+    @Test void spotsTooCloseToThePlayerAreNotHandedOut() {
+        try (Fixture f = new Fixture()) {
+            f.config.set("rtp.queue.size", 1);
+            f.result.complete(new LocationFinder.SearchResult(new Location(f.world, 20.5, 64, 20.5), 1));
+            f.service.queue().refill(f.world);
+            assertNull(f.service.queue().take(f.world, new Location(f.world, 0, 64, 0)));
+            assertNotNull(f.service.queue().take(f.world, new Location(f.world, 900, 64, 900)), "a farther player may take it");
+        }
+    }
     private static class Fixture implements AutoCloseable {
-        final DyRTP plugin = mock(DyRTP.class);
+        final DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
         final YamlConfiguration config = new YamlConfiguration();
         final Player player = mock(Player.class);
         final World world = mock(World.class);
@@ -391,6 +423,7 @@ class RtpServiceTest {
             when(economy.cost(any(Player.class))).thenAnswer(call -> economy.cost());
             when(plugin.getConfig()).thenReturn(config);
             when(plugin.isEnabled()).thenReturn(true);
+            config.set("rtp.queue.size", 0); // The ready-spot queue has its own tests.
             Server server = mock(Server.class);
             org.bukkit.scheduler.BukkitScheduler scheduler = mock(org.bukkit.scheduler.BukkitScheduler.class);
             when(plugin.getServer()).thenReturn(server);

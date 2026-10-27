@@ -14,7 +14,7 @@ import static org.mockito.Mockito.*;
 class MessageServiceTest {
     @TempDir Path temp;
     @Test void forcedGlobalLanguageOverridesSavedChoiceAndLocale() {
-        DyRTP plugin = mock(DyRTP.class);
+        DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
         when(plugin.getDataFolder()).thenReturn(temp.toFile());
         YamlConfiguration config = new YamlConfiguration();
         config.set("language.default", "en");
@@ -31,7 +31,7 @@ class MessageServiceTest {
         assertEquals(Language.TR, messages.language(player));
     }
     @Test void autoUsesSavedChoiceThenLocaleAndDisabledChoicesAreIgnored() {
-        DyRTP plugin = mock(DyRTP.class);
+        DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
         when(plugin.getDataFolder()).thenReturn(temp.toFile());
         YamlConfiguration config = new YamlConfiguration();
         config.set("language.default", "auto");

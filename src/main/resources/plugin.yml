@@ -2,6 +2,7 @@ name: DyRTP
 version: ${version}
 main: dev.dyrtp.DyRTP
 api-version: '1.20'
+folia-supported: true
 description: Fast random teleport plugin with land-protection integration and English, Turkish, German, Spanish and Russian messages.
 author: DyPlugin
 website: https://github.com/DyPlugin/DyRTP
@@ -69,6 +70,9 @@ commands:
 permissions:
   dyrtp.use:
     description: Allows using random teleport.
+    default: true
+  dyrtp.group:
+    description: Invite players to travel together with /dyrtp group.
     default: true
   dyrtp.biome:
     description: Allows /rtp biome to choose the destination biome.

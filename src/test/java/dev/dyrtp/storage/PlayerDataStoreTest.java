@@ -11,7 +11,7 @@ import static org.mockito.Mockito.*;
 class PlayerDataStoreTest {
     @TempDir Path folder;
     @Test void malformedReloadRetainsSavedPreference() throws Exception {
-        DyRTP plugin = mock(DyRTP.class);
+        DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
         when(plugin.getDataFolder()).thenReturn(folder.toFile());
         when(plugin.getLogger()).thenReturn(Logger.getAnonymousLogger());
         UUID id = UUID.randomUUID();

@@ -24,7 +24,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitTask;
+import dev.dyrtp.platform.Scheduler;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,6 +40,8 @@ public class RtpService {
     private final CooldownService cooldownService;
     private final dev.dyrtp.rank.RankRules ranks;
     private final LocationFinder locationFinder;
+    private final LocationQueue queue;
+    private final GroupService groups;
     private final Map<UUID, PendingTeleport> pending = new ConcurrentHashMap<>();
     private final Map<UUID, PendingConfirmation> confirmations = new ConcurrentHashMap<>();
     private final Map<UUID, Request> active = new ConcurrentHashMap<>();
@@ -56,10 +58,23 @@ public class RtpService {
         this.cooldownService = new CooldownService(plugin);
         this.ranks = new dev.dyrtp.rank.RankRules(plugin);
         this.locationFinder = new LocationFinder(plugin, protection);
+        this.queue = new LocationQueue(plugin, locationFinder);
+        this.groups = new GroupService(plugin);
+    }
+
+    public LocationQueue queue() {
+        return queue;
+    }
+
+    public GroupService groups() {
+        return groups;
     }
 
     public void reload() {
         cancelAll();
+        queue.clear();
+        groups.clear();
+        queue.start();
     }
 
     public void request(Player player, RtpCause cause) {
@@ -239,10 +254,13 @@ public class RtpService {
     }
 
     private void startWarmup(Request request, Location location, int attempts, World world, RtpCause cause) {
-        DestinationChunk chunk = new DestinationChunk(location.getWorld(), location.getBlockX() >> 4, location.getBlockZ() >> 4);
-        if (!warmupChunks.containsKey(chunk)) chunk.world().addPluginChunkTicket(chunk.x(), chunk.z(), plugin);
-        warmupChunks.merge(chunk, 1, Integer::sum);
-        request.destinationChunk = chunk;
+        // Folia: tickets belong to the destination region; there the final check loads the chunk instead.
+        if (!Scheduler.FOLIA) {
+            DestinationChunk chunk = new DestinationChunk(location.getWorld(), location.getBlockX() >> 4, location.getBlockZ() >> 4);
+            if (!warmupChunks.containsKey(chunk)) chunk.world().addPluginChunkTicket(chunk.x(), chunk.z(), plugin);
+            warmupChunks.merge(chunk, 1, Integer::sum);
+            request.destinationChunk = chunk;
+        }
         Player player = request.player;
         int seconds = Math.max(1, plugin.getConfig().getInt("warmup.seconds", 3));
         sendRtp(player, "rtp.warmup", Map.of("{seconds}", String.valueOf(seconds)));
@@ -260,7 +278,7 @@ public class RtpService {
             }
         }
 
-        BukkitTask task = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+        Scheduler.Task task = plugin.scheduler().runLater(player, () -> {
             if (!current(request)) return;
             pending.remove(player.getUniqueId());
             clearBlindness(request);
@@ -284,14 +302,37 @@ public class RtpService {
         sendActionbar(player, messages.get(player, "rtp.searching-safe"));
 
         request.biome = biome;
-        request.search = locationFinder.find(world, request.origin, biome, ranks.maxRadius(player));
-        request.search.whenComplete((result, error) -> runMain(() -> {
+        int rankRadius = ranks.maxRadius(player);
+        Location queued = biome == null && rankRadius == 0 ? queue.take(world, request.origin) : null;
+        if (queued != null) {
+            request.fromQueue = true;
+            request.search = locationFinder.ready(queued);
+        } else {
+            request.search = locationFinder.find(world, request.origin, biome, rankRadius);
+            if (biome == null && rankRadius == 0) queue.refill(world);
+        }
+        awaitSearch(request, world, cause);
+    }
+
+    /** A queued spot that turned unsafe is not a failure yet: a normal search runs instead. */
+    private boolean retryLive(Request request, World world, RtpCause cause) {
+        if (!request.fromQueue || !current(request)) return false;
+        request.fromQueue = false;
+        request.search = locationFinder.find(world, request.origin, request.biome, ranks.maxRadius(request.player));
+        awaitSearch(request, world, cause);
+        return true;
+    }
+
+    private void awaitSearch(Request request, World world, RtpCause cause) {
+        Player player = request.player;
+        request.search.whenComplete((result, error) -> plugin.scheduler().runFor(player, () -> {
             if (!current(request)) return;
             if (!player.isOnline() || player.isDead() || !player.getWorld().equals(request.origin.getWorld())) {
                 cancelSilently(player);
                 return;
             }
             if (error != null || result == null || result.location() == null) {
+                if (retryLive(request, world, cause)) return;
                 fail(request, result != null ? result.attempts() : 0);
                 return;
             }
@@ -330,11 +371,30 @@ public class RtpService {
             cancelSilently(player);
             return;
         }
+        if (Scheduler.FOLIA) {
+            // The destination belongs to another region: check it there, then continue on the player's thread.
+            plugin.scheduler().supplyAt(target, () -> locationFinder.isSafeNow(target, request.origin))
+                    .whenComplete((safe, failure) -> plugin.scheduler().runFor(player, () -> {
+                        if (!current(request)) return;
+                        if (failure != null || !Boolean.TRUE.equals(safe) || !eligible(request)) {
+                            if (eligible(request) && retryLive(request, world, cause)) return;
+                            fail(request, attempts);
+                            return;
+                        }
+                        payAndTeleport(request, target, attempts, world, cause);
+                    }));
+            return;
+        }
         if (!locationFinder.isSafeNow(target, request.origin)) {
+            if (retryLive(request, world, cause)) return;
             fail(request, attempts);
             return;
         }
+        payAndTeleport(request, target, attempts, world, cause);
+    }
 
+    private void payAndTeleport(Request request, Location target, int attempts, World world, RtpCause cause) {
+        Player player = request.player;
         double currentCost = costApplies(player, cause) ? economy.cost(player) : 0;
         if (Double.compare(currentCost, request.cost) != 0) {
             cancelSilently(player);
@@ -357,6 +417,14 @@ public class RtpService {
         target.setYaw(player.getLocation().getYaw());
         target.setPitch(player.getLocation().getPitch());
         teleporting.put(player.getUniqueId(), request);
+        if (Scheduler.FOLIA) {
+            plugin.scheduler().teleport(player, target).whenComplete((done, failure) -> plugin.scheduler().runFor(player, () -> {
+                teleporting.remove(player.getUniqueId(), request);
+                if (failure != null) plugin.getLogger().warning("RTP teleport failed: " + failure.getMessage());
+                completeTeleport(request, failure == null && Boolean.TRUE.equals(done), attempts, world, cause);
+            }));
+            return;
+        }
         boolean success;
         Listener finalGuard = new Listener() { };
         try {
@@ -378,6 +446,12 @@ public class RtpService {
             HandlerList.unregisterAll(finalGuard);
             teleporting.remove(player.getUniqueId(), request);
         }
+        completeTeleport(request, success, attempts, world, cause);
+    }
+
+    private void completeTeleport(Request request, boolean success, int attempts, World world, RtpCause cause) {
+        Player player = request.player;
+        Location target;
         if (!current(request)) return;
             try {
                 if (!success || !player.isOnline()) {
@@ -402,17 +476,70 @@ public class RtpService {
                 sendActionbar(player, messages.get(player, "rtp.success-location-v2", placeholders));
                 playSound(player, "feedback.sounds.success");
                 Bukkit.getPluginManager().callEvent(new DyRtpPostTeleportEvent(player, cause, target));
+                if (cause == RtpCause.COMMAND) teleportGroup(request, target, world);
+                sethomeHint(player);
             } finally {
                 active.remove(player.getUniqueId(), request);
                 releaseDestination(request);
             }
     }
 
+    /**
+     * Brings the leader's group along: members who accepted, are online, in the leader's starting world and within
+     * group.max-distance of where the leader stood. Each member is checked and moved on their own thread.
+     */
+    private void teleportGroup(Request request, Location target, World world) {
+        Player leader = request.player;
+        java.util.List<UUID> members = groups.members(leader.getUniqueId());
+        if (members.isEmpty() || !groups.enabled()) return;
+        groups.used(leader.getUniqueId());
+        double maxDistance = Math.max(1, plugin.getConfig().getDouble("group.max-distance", 32));
+        Location origin = request.origin.clone();
+        for (UUID id : members) {
+            Player member = Bukkit.getPlayer(id);
+            if (member == null) continue;
+            plugin.scheduler().runFor(member, () -> {
+                if (!member.isOnline() || member.isDead() || active.containsKey(id) || teleporting.containsKey(id)) return;
+                Location at = member.getLocation();
+                if (!origin.getWorld().equals(at.getWorld()) || at.distanceSquared(origin) > maxDistance * maxDistance) {
+                    sendRtp(member, "rtp.group-too-far", Map.of("{leader}", leader.getName()));
+                    return;
+                }
+                Location spot = target.clone();
+                spot.setYaw(at.getYaw());
+                spot.setPitch(at.getPitch());
+                plugin.scheduler().teleport(member, spot).whenComplete((done, failure) -> plugin.scheduler().runFor(member, () -> {
+                    if (failure != null || !Boolean.TRUE.equals(done)) return;
+                    if (plugin.getConfig().getBoolean("group.member-cooldown", true)) cooldownService.start(member, world);
+                    sendRtp(member, "rtp.group-arrived", Map.of("{leader}", leader.getName()));
+                    playSound(member, "feedback.sounds.success");
+                }));
+            });
+        }
+        sendRtp(leader, "rtp.group-brought", Map.of("{count}", String.valueOf(members.size())));
+    }
+
+    /** With DyHomes installed, offers a click that prepares /sethome after a successful RTP. */
+    private void sethomeHint(Player player) {
+        if (!plugin.getConfig().getBoolean("integrations.dyhomes.sethome-hint", true)) return;
+        org.bukkit.plugin.Plugin dyHomes = Bukkit.getPluginManager().getPlugin("DyHomes");
+        if (dyHomes == null || !dyHomes.isEnabled() || !player.hasPermission("dyhomes.sethome")) return;
+        TextComponent hint = new TextComponent(TextComponent.fromLegacyText(messages.get(player, "rtp.sethome-hint")));
+        hint.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, messages.get(player, "rtp.sethome-command") + " "));
+        try {
+            player.spigot().sendMessage(hint);
+        } catch (UnsupportedOperationException noChatComponents) {
+            // CraftBukkit without Spigot: the hint is optional.
+        }
+    }
+
     /** Checks the final destination supplied by other teleport listeners. */
     public boolean validateTeleport(Player player, Location target) {
         Request request = teleporting.get(player.getUniqueId());
-        return request == null || (current(request) && eligible(request) && target != null
-                && locationFinder.isSafeNow(target, request.origin));
+        if (request == null) return true;
+        // Folia: the destination was checked on its own region just before; it cannot be read from this thread.
+        if (Scheduler.FOLIA) return current(request) && eligible(request) && target != null;
+        return current(request) && eligible(request) && target != null && locationFinder.isSafeNow(target, request.origin);
     }
 
     /** Seconds until the player may use /rtp again in the world they would be sent to; 0 when ready. */
@@ -583,15 +710,6 @@ public class RtpService {
         }
     }
 
-    private void runMain(Runnable runnable) {
-        if (!plugin.isEnabled()) return;
-        if (Bukkit.isPrimaryThread()) {
-            runnable.run();
-        } else {
-            Bukkit.getScheduler().runTask(plugin, runnable);
-        }
-    }
-
     private Map<String, String> coordinatePlaceholders(Location location, int attempts) {
         Map<String, String> placeholders = new HashMap<>();
         placeholders.put("{x}", String.valueOf(location.getBlockX()));
@@ -629,7 +747,7 @@ public class RtpService {
         return rest > 0L ? minutes + "m " + rest + "s" : minutes + "m";
     }
 
-    private record PendingTeleport(BukkitTask task, Location start) {
+    private record PendingTeleport(Scheduler.Task task, Location start) {
     }
 
     private static final class Request {
@@ -642,6 +760,7 @@ public class RtpService {
         private CompletableFuture<LocationFinder.SearchResult> search;
         private EconomyService.Withdrawal withdrawal;
         private String biome;
+        private volatile boolean fromQueue;
         private PotionEffect blindness;
         private int blindnessAppliedAt;
 

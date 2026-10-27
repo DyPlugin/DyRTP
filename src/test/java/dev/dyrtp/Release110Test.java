@@ -47,7 +47,7 @@ class Release110Test {
     }
 
     private static DyRTP plugin(YamlConfiguration config) {
-        DyRTP plugin = mock(DyRTP.class);
+        DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
         when(plugin.getConfig()).thenReturn(config);
         return plugin;
     }

@@ -16,7 +16,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
-import org.bukkit.scheduler.BukkitTask;
+import dev.dyrtp.platform.Scheduler;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.UUID;
@@ -25,7 +25,7 @@ public class PlayerEventListener implements Listener {
 
     private final DyRTP plugin;
     private final RtpService rtpService;
-    private final Map<UUID, AutomaticRtp> automaticTasks = new HashMap<>();
+    private final Map<UUID, AutomaticRtp> automaticTasks = new java.util.concurrent.ConcurrentHashMap<>();
 
     public PlayerEventListener(DyRTP plugin, RtpService rtpService) {
         this.plugin = plugin;
@@ -46,7 +46,7 @@ public class PlayerEventListener implements Listener {
         UUID world = event.getPlayer().getWorld().getUID();
         AutomaticRtp operation = new AutomaticRtp();
         automaticTasks.put(event.getPlayer().getUniqueId(), operation);
-        operation.task = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+        operation.task = plugin.scheduler().runLater(event.getPlayer(), () -> {
             Player player = event.getPlayer();
             if (!automaticTasks.remove(player.getUniqueId(), operation)) return;
             if (plugin.isEnabled() && rtpService.lifecycleRevision() == revision && player.isOnline() && !player.isDead()
@@ -73,7 +73,7 @@ public class PlayerEventListener implements Listener {
         operation.respawnWorld = event.getRespawnLocation().getWorld().getUID();
         operation.awaitingRespawnTransition = !event.getPlayer().getWorld().getUID().equals(operation.respawnWorld);
         automaticTasks.put(event.getPlayer().getUniqueId(), operation);
-        operation.task = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+        operation.task = plugin.scheduler().runLater(event.getPlayer(), () -> {
             Player player = event.getPlayer();
             if (!automaticTasks.remove(player.getUniqueId(), operation)) return;
             if (plugin.isEnabled() && rtpService.lifecycleRevision() == revision && player.isOnline() && !player.isDead()
@@ -119,6 +119,7 @@ public class PlayerEventListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         cancelAutomatic(event.getPlayer());
+        rtpService.groups().leave(event.getPlayer().getUniqueId());
         rtpService.cancelSilently(event.getPlayer());
     }
 
@@ -157,7 +158,7 @@ public class PlayerEventListener implements Listener {
     }
 
     private static final class AutomaticRtp {
-        private BukkitTask task;
+        private Scheduler.Task task;
         private UUID respawnWorld;
         private boolean awaitingRespawnTransition;
     }
