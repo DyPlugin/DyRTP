@@ -18,7 +18,15 @@ public final class RankRules {
     }
 
     public int cooldownSeconds(Player player) {
-        int base = Math.max(0, plugin.getConfig().getInt("cooldown.seconds", 0));
+        return cooldownSeconds(player, null);
+    }
+
+    /** Like cooldownSeconds(player), but starting from rtp.worlds.<world>.cooldown when that world has one. */
+    public int cooldownSeconds(Player player, org.bukkit.World world) {
+        String own = world == null ? null : "rtp.worlds." + world.getName() + ".cooldown";
+        int base = Math.max(0, own != null && plugin.getConfig().contains(own)
+                ? plugin.getConfig().getInt(own, 0)
+                : plugin.getConfig().getInt("cooldown.seconds", 0));
         if (!plugin.getConfig().getBoolean("cooldown.permission-overrides", true)) return base;
         OptionalLong rank = lowest(player, "dyrtp.cooldown.");
         return rank.isPresent() ? (int) Math.min(Integer.MAX_VALUE, rank.getAsLong()) : base;

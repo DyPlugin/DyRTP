@@ -89,3 +89,12 @@ permissions:
   dyrtp.bypass.economy:
     description: Bypass RTP cost.
     default: op
+  dyrtp.world.*:
+    description: Choose any world allowed by world-selection with /rtp world <world>. Use dyrtp.world.<world> for single worlds.
+    default: true
+  dyrtp.sign:
+    description: Use RTP signs.
+    default: true
+  dyrtp.portal:
+    description: Use RTP portal regions.
+    default: true

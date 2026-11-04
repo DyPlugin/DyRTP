@@ -8,6 +8,8 @@ import dev.dyrtp.protection.ProtectionService;
 import dev.dyrtp.rtp.BiomeChoices;
 import dev.dyrtp.rtp.RtpCause;
 import dev.dyrtp.rtp.RtpService;
+import dev.dyrtp.rtp.WorldChoices;
+import dev.dyrtp.portal.PortalStore;
 import dev.dyrtp.storage.PlayerDataStore;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -28,6 +30,8 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
     private final ProtectionService protection;
     private final RtpService rtpService;
     private final PlayerDataStore playerDataStore;
+    /** Corners picked with /dyrtp admin portal pos1|pos2, per administrator. */
+    private final Map<java.util.UUID, org.bukkit.Location[]> portalCorners = new java.util.concurrent.ConcurrentHashMap<>();
 
     public DyRtpCommand(
             DyRTP plugin,
@@ -86,6 +90,12 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         if (matches(args[0], "group", "grup", "party")) {
             return group(sender, args);
         }
+        if (matches(args[0], "world", "dünya", "dunya")) {
+            return world(sender, args.length > 1 ? args[1] : null);
+        }
+        if (args.length == 1 && WorldChoices.match(plugin, sender, args[0]) != null) {
+            return world(sender, args[0]);
+        }
 
         messages.send(sender, "general.unknown-command");
         return true;
@@ -127,6 +137,110 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         rtpService.request(player, RtpCause.COMMAND, biome);
+        return true;
+    }
+
+    /** /dyrtp world <world>, or /rtp <world>: search in a world the player may choose. */
+    private boolean world(CommandSender sender, String name) {
+        if (!(sender instanceof Player player)) {
+            messages.send(sender, "general.player-only");
+            return true;
+        }
+        if (!sender.hasPermission("dyrtp.use")) {
+            messages.send(sender, "general.no-permission");
+            return true;
+        }
+        if (!WorldChoices.enabled(plugin)) {
+            messages.send(sender, "rtp.world-choice-disabled");
+            return true;
+        }
+        List<String> choices = WorldChoices.available(plugin, sender);
+        String list = choices.isEmpty() ? "-" : String.join(", ", choices);
+        if (name == null) {
+            messages.send(sender, "rtp.world-usage", Map.of("{worlds}", list));
+            return true;
+        }
+        org.bukkit.World world = WorldChoices.match(plugin, sender, name);
+        if (world == null) {
+            messages.send(sender, "rtp.world-unknown", Map.of("{world}", name, "{worlds}", list));
+            return true;
+        }
+        rtpService.request(player, RtpCause.COMMAND, null, world);
+        return true;
+    }
+
+    /** /dyrtp admin portal pos1 | pos2 | create <name> [world] | delete <name> | list */
+    private boolean portal(CommandSender sender, String[] args) {
+        PortalStore store = plugin.getPortals();
+        if (args.length < 3 || matches(args[2], "list", "liste")) {
+            if (store.all().isEmpty()) {
+                messages.send(sender, "portals.none");
+                return true;
+            }
+            messages.send(sender, "portals.list-header");
+            for (PortalStore.Portal portal : store.all()) {
+                messages.send(sender, "portals.list-entry", Map.of("{name}", portal.name(), "{world}", portal.world(),
+                        "{from}", portal.minX() + " " + portal.minY() + " " + portal.minZ(),
+                        "{to}", portal.maxX() + " " + portal.maxY() + " " + portal.maxZ(),
+                        "{target}", portal.target().isEmpty() ? portal.world() : portal.target()));
+            }
+            return true;
+        }
+        if (matches(args[2], "delete", "remove", "sil")) {
+            if (args.length < 4) {
+                messages.send(sender, "portals.usage");
+                return true;
+            }
+            messages.send(sender, store.remove(args[3]) ? "portals.deleted" : "portals.unknown", Map.of("{name}", args[3]));
+            return true;
+        }
+        if (!(sender instanceof Player player)) {
+            messages.send(sender, "general.player-only");
+            return true;
+        }
+        boolean first = matches(args[2], "pos1", "konum1");
+        if (first || matches(args[2], "pos2", "konum2")) {
+            org.bukkit.Location[] corners = portalCorners.computeIfAbsent(player.getUniqueId(), id -> new org.bukkit.Location[2]);
+            org.bukkit.Location at = player.getLocation().getBlock().getLocation();
+            corners[first ? 0 : 1] = at;
+            messages.send(sender, first ? "portals.pos1" : "portals.pos2", Map.of("{x}", String.valueOf(at.getBlockX()),
+                    "{y}", String.valueOf(at.getBlockY()), "{z}", String.valueOf(at.getBlockZ())));
+            return true;
+        }
+        if (matches(args[2], "create", "oluştur", "olustur")) {
+            if (args.length < 4 || !args[3].matches("[A-Za-z0-9_-]{1,32}")) {
+                messages.send(sender, "portals.usage");
+                return true;
+            }
+            org.bukkit.Location[] corners = portalCorners.get(player.getUniqueId());
+            if (corners == null || corners[0] == null || corners[1] == null) {
+                messages.send(sender, "portals.need-corners");
+                return true;
+            }
+            if (!corners[0].getWorld().equals(corners[1].getWorld())) {
+                messages.send(sender, "portals.same-world");
+                return true;
+            }
+            PortalStore.Portal portal = PortalStore.Portal.of(args[3], corners[0], corners[1], args.length > 4 ? args[4] : "");
+            if (portal.maxX() - portal.minX() >= PortalStore.MAX_SIDE || portal.maxY() - portal.minY() >= PortalStore.MAX_SIDE
+                    || portal.maxZ() - portal.minZ() >= PortalStore.MAX_SIDE) {
+                messages.send(sender, "portals.too-big", Map.of("{max}", String.valueOf(PortalStore.MAX_SIDE)));
+                return true;
+            }
+            if (!portal.target().isEmpty() && Bukkit.getWorld(portal.target()) == null) {
+                messages.send(sender, "signs.unknown-world", Map.of("{world}", portal.target()));
+                return true;
+            }
+            if (!store.put(portal)) {
+                messages.send(sender, "general.reload-failed");
+                return true;
+            }
+            portalCorners.remove(player.getUniqueId());
+            messages.send(sender, "portals.created", Map.of("{name}", portal.name(),
+                    "{target}", portal.target().isEmpty() ? portal.world() : portal.target()));
+            return true;
+        }
+        messages.send(sender, "portals.usage");
         return true;
     }
 
@@ -273,6 +387,9 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             if (sender.hasPermission("dyrtp.group") && rtpService.groups().enabled()) {
                 messages.send(sender, "general.help-group");
             }
+            if (sender.hasPermission("dyrtp.use") && !WorldChoices.available(plugin, sender).isEmpty()) {
+                messages.send(sender, "general.help-world");
+            }
             messages.send(sender, "general.help-language");
         }
         if (sender.hasPermission("dyrtp.admin")) {
@@ -286,7 +403,7 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length < 2 || matches(args[1], "help", "yardım", "yardim")) {
-            for (String line : messages.getList(sender, "admin.help-v4")) {
+            for (String line : messages.getList(sender, "admin.help-v5")) {
                 sender.sendMessage(line);
             }
             return true;
@@ -322,6 +439,9 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         }
         if (matches(sub, "cooldown", "bekleme")) {
             return secondsFeature(sender, args, "cooldown.enabled", "cooldown.seconds");
+        }
+        if (matches(sub, "portal", "portallar")) {
+            return portal(sender, args);
         }
 
         messages.send(sender, "general.unknown-command");
@@ -588,6 +708,7 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
                     words.add(tr ? "onayla" : "confirm");
                     if (biomeChoice(sender)) words.add(tr ? "biyom" : "biome");
                     if (sender.hasPermission("dyrtp.group") && rtpService.groups().enabled()) words.add(tr ? "grup" : "group");
+                    if (!WorldChoices.available(plugin, sender).isEmpty()) words.add(tr ? "dünya" : "world");
                 }
             }
             if (sender.hasPermission("dyrtp.admin")) words.add("admin");
@@ -597,6 +718,9 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             List<String> words = new ArrayList<>(tr ? List.of("katil", "reddet", "ayril") : List.of("join", "decline", "leave"));
             Bukkit.getOnlinePlayers().stream().filter(online -> !online.equals(sender)).map(Player::getName).forEach(words::add);
             return startsWith(args[1], words);
+        }
+        if (args.length == 2 && matches(args[0], "world", "dünya", "dunya")) {
+            return sender.hasPermission("dyrtp.use") ? startsWith(args[1], WorldChoices.available(plugin, sender)) : List.of();
         }
         if (args.length == 2 && matches(args[0], "biome", "biyom")) {
             return biomeChoice(sender) ? startsWith(args[1], BiomeChoices.available(plugin)) : List.of();
@@ -612,8 +736,18 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 2) {
             return startsWith(args[1], tr
-                    ? List.of("yardım", "yenile", "dil", "ekonomi", "fiyat", "bekleme", "gecikme", "sınır", "zorla")
-                    : List.of("help", "reload", "language", "economy", "price", "cooldown", "delay", "radius", "force"));
+                    ? List.of("yardım", "yenile", "dil", "ekonomi", "fiyat", "bekleme", "gecikme", "sınır", "zorla", "portal")
+                    : List.of("help", "reload", "language", "economy", "price", "cooldown", "delay", "radius", "force", "portal"));
+        }
+        if (args.length == 3 && matches(args[1], "portal", "portallar")) {
+            return startsWith(args[2], tr ? List.of("konum1", "konum2", "oluştur", "sil", "liste")
+                    : List.of("pos1", "pos2", "create", "delete", "list"));
+        }
+        if (args.length == 4 && matches(args[1], "portal", "portallar") && matches(args[2], "delete", "remove", "sil")) {
+            return startsWith(args[3], plugin.getPortals().all().stream().map(PortalStore.Portal::name).toList());
+        }
+        if (args.length == 5 && matches(args[1], "portal", "portallar") && matches(args[2], "create", "oluştur", "olustur")) {
+            return startsWith(args[4], Bukkit.getWorlds().stream().map(org.bukkit.World::getName).toList());
         }
         if (args.length == 3 && matches(args[1], "force", "zorla", "forcertp", "rtpforce")) {
             return startsWith(args[2], Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());

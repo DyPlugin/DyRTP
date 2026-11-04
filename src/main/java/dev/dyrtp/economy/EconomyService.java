@@ -40,6 +40,16 @@ public class EconomyService {
     }
     /** The configured price, or a lower one from a dyrtp.price.<amount> permission. */
     public double cost(Player player) { return ranks.price(player, cost()); }
+    /** The world's own price from rtp.worlds.<world>.price, or economy.cost when the world has none. */
+    public double cost(org.bukkit.World world) {
+        String path = world == null ? null : "rtp.worlds." + world.getName() + ".price";
+        if (path == null || !plugin.getConfig().contains(path)) return cost();
+        double amount = plugin.getConfig().getDouble(path, 0);
+        if (!Double.isFinite(amount) || amount < 0) throw new IllegalArgumentException(path + " must be finite and nonnegative");
+        return amount;
+    }
+    /** Like cost(player), but starting from the destination world's own price. */
+    public double cost(Player player, org.bukkit.World world) { return ranks.price(player, cost(world)); }
     public boolean has(Player player) { return !enabled() || has(player, cost(player)); }
     public boolean has(Player player, double amount) {
         validate(amount);

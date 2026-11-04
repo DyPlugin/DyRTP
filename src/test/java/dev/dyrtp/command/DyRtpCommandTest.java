@@ -123,7 +123,9 @@ class DyRtpCommandTest {
         when(messages.language(player)).thenReturn(Language.TR);
         Command command = mock(Command.class);
         when(command.getName()).thenReturn("dyrtp");
-        DyRtpCommand executor = new DyRtpCommand(null, messages, null, null, null);
+        DyRTP plugin = dev.dyrtp.TestPlugins.plugin();
+        when(plugin.getConfig()).thenReturn(new YamlConfiguration());
+        DyRtpCommand executor = new DyRtpCommand(plugin, messages, null, null, null);
         assertEquals(java.util.List.of("yardım", "dil", "reddet", "ışınlan", "onayla", "admin"),
                 executor.onTabComplete(player, command, "dyrtp", new String[]{""}));
         assertEquals(java.util.List.of("oto", "en", "tr", "de", "es", "ru"),
@@ -204,7 +206,7 @@ class DyRtpCommandTest {
         when(sender.hasPermission("dyrtp.admin")).thenReturn(true);
         assertTrue(executor.onTabComplete(sender, command, "dyra", new String[]{""}).contains("reload"));
         executor.onCommand(sender, command, "dyra", new String[]{});
-        verify(messages).getList(sender, "admin.help-v4");
+        verify(messages).getList(sender, "admin.help-v5");
     }
     @Test void helpOmitsItsOwnCommandLine() {
         Command command = mock(Command.class);

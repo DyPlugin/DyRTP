@@ -1,22 +1,24 @@
-# DyRTP 1.2.0
+# DyRTP 1.3.0
 
-This release runs on Folia, finds safe spots ahead of time, lets friends travel together and works with DyHomes. Existing settings, translations, aliases and player data are kept.
+This release lets players choose the world they travel to, gives each world its own price and cooldown, and adds RTP signs and portal regions for a spawn exit. Existing settings, translations, aliases and player data are kept, and nothing changes until you turn the new options on.
 
 ## Added
 
-- **Folia.** The same JAR runs on Bukkit, Spigot, Paper, Purpur and Folia. On Folia, destinations are read on the region that owns them and players are teleported asynchronously. Update notices on Folia look for Folia builds.
-- **Ready spots.** `rtp.queue.size` (default 3, 0 turns it off) keeps safe spots per world found in advance. `/rtp` uses one right away and a new one is searched in the background.
-  - `rtp.queue.worlds` fills chosen worlds at startup; other worlds are filled after their first RTP.
-  - Every spot is checked again before the teleport. An unsafe or protected one falls back to a live search.
-  - Biome choice and rank distances always search live.
-- **Group RTP.** `/dyrtp group <player>` (Turkish `/dyrtp grup`) invites a player with clickable Accept and Decline buttons. `join`, `decline`, `leave` and `disband` (Turkish `katil`, `reddet`, `ayril`) manage the group.
-  - Members within `group.max-distance` blocks (32) come along on the leader's next `/rtp` and land next to them.
-  - `group.max-size` (4) counts the leader. Invitations last `invite-seconds` (60) and groups `expire-seconds` (300) without an RTP.
-  - `member-cooldown` gives members the cooldown too. Permission `dyrtp.group`.
-- **DyHomes hint.** With DyHomes installed, a successful RTP offers a click that types `/sethome` for you. Switch: `integrations.dyhomes.sethome-hint`.
+- **Choose a world.** `/rtp world <world>`, or simply `/rtp <world>`, searches in another world, for example the Nether or the End. TAB lists the worlds the player may choose.
+  - Off by default: turn it on with `world-selection.enabled: true`.
+  - `world-selection.worlds` lists the worlds players may pick; empty allows every loaded world that is not in `rtp.disabled-worlds`.
+  - Players need `dyrtp.world.<world>`, or `dyrtp.world.*`, which everyone has by default.
+  - A paid world choice keeps its world through the confirmation step.
+- **Price and cooldown per world.** `rtp.worlds.<world>.price` and `rtp.worlds.<world>.cooldown` (seconds) replace `economy.cost` and `cooldown.seconds` for RTP into that world. Rank permissions such as `dyrtp.price.<amount>` still replace them.
+- **RTP signs.** An administrator writes `[RTP]` on the first line of a sign; right-clicking it starts an RTP. The second line may name a world to send players to.
+  - Only players with `dyrtp.admin` can create one. The sign is marked in its own block data, so copying the text onto another sign does nothing.
+  - Players need `dyrtp.sign`. Settings: `signs.enabled`, `signs.header` and `signs.header-color`.
+- **Portal regions.** `/dyrtp admin portal pos1` and `pos2` mark two corners, `create <name> [world]` turns the space between them into a portal, and `delete` and `list` manage portals.
+  - Walking into a portal starts one RTP per entry; cooldown and price apply as for `/rtp`. Portals are saved in `portals.yml`.
+  - A portal side can be at most 64 blocks. Players need `dyrtp.portal`. Settings: `portals.enabled` and `portals.skip-warmup` (on, because the step into the portal would cancel a warmup).
 
 ## Upgrading
 
-Stop the server, replace the JAR with `DyRTP-1.2.0.jar` and start it again. New settings (config version 10) and messages are added in every language; nothing you changed is replaced.
+Stop the server, replace the JAR with `DyRTP-1.3.0.jar` and start it again. New settings and messages are added in every language; nothing you changed is replaced. The admin help gains the portal command.
 
-Full changelog: https://dynastyplugins.com/dyrtp/versions/1.2.0
+Full changelog: https://dynastyplugins.com/dyrtp/versions/1.3.0

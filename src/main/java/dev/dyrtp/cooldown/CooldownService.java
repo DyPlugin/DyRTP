@@ -36,7 +36,7 @@ public class CooldownService {
         if (!plugin.getConfig().getBoolean("cooldown.enabled", false)) {
             return;
         }
-        int seconds = ranks.cooldownSeconds(player);
+        int seconds = ranks.cooldownSeconds(player, world);
         cooldowns.put(key(player.getUniqueId(), world), System.currentTimeMillis() + seconds * 1000L);
     }
 

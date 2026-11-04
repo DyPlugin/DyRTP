@@ -112,7 +112,7 @@ class RtpServiceTest {
             field.setAccessible(true);
             Class<?> quoteType = Class.forName("dev.dyrtp.rtp.RtpService$PendingConfirmation");
             var constructor = quoteType.getDeclaredConstructors()[0]; constructor.setAccessible(true);
-            Object quote = constructor.newInstance(RtpCause.COMMAND, 0L, f.world.getUID(), f.world.getUID(), 10D, "expired", null);
+            Object quote = constructor.newInstance(RtpCause.COMMAND, 0L, f.world.getUID(), f.world.getUID(), 10D, "expired", null, false);
             @SuppressWarnings("unchecked") var quotes = (java.util.Map<UUID, Object>) field.get(f.service);
             quotes.put(f.player.getUniqueId(), quote);
             f.service.confirm(f.player, "expired");
@@ -421,6 +421,7 @@ class RtpServiceTest {
         Fixture() {
             // The per-player price follows the configured price unless a test sets dyrtp.price permissions.
             when(economy.cost(any(Player.class))).thenAnswer(call -> economy.cost());
+            when(economy.cost(any(Player.class), any())).thenAnswer(call -> economy.cost());
             when(plugin.getConfig()).thenReturn(config);
             when(plugin.isEnabled()).thenReturn(true);
             config.set("rtp.queue.size", 0); // The ready-spot queue has its own tests.

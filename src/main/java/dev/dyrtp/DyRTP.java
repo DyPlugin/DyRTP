@@ -30,6 +30,7 @@ public class DyRTP extends JavaPlugin {
     private ProtectionService protection;
     private RtpService rtpService;
     private PlayerEventListener playerEventListener;
+    private dev.dyrtp.portal.PortalStore portals;
     private ModrinthUpdateChecker updateChecker;
     private Object placeholders;
     private dev.dyrtp.lib.bstats.bukkit.Metrics metrics;
@@ -60,6 +61,7 @@ public class DyRTP extends JavaPlugin {
         this.protection = new ProtectionService(this);
         this.rtpService = new RtpService(this, messages, economy, protection);
         this.playerEventListener = new PlayerEventListener(this, rtpService);
+        this.portals = new dev.dyrtp.portal.PortalStore(this);
 
         DyRtpCommand command = new DyRtpCommand(this, messages, protection, rtpService, playerDataStore);
         PluginCommand dyRtpCommand = getCommand("dyrtp");
@@ -87,6 +89,7 @@ public class DyRTP extends JavaPlugin {
         }
 
         getServer().getPluginManager().registerEvents(playerEventListener, this);
+        getServer().getPluginManager().registerEvents(new dev.dyrtp.listener.SignPortalListener(this, rtpService, messages, portals), this);
         startPlaceholders();
         startMetrics();
         // Worlds are loaded by now; fill the ready-spot queue in the background.
@@ -128,6 +131,7 @@ public class DyRTP extends JavaPlugin {
         economy.reload();
         protection.reload();
         rtpService.reload();
+        if (portals != null) portals.reload();
         if (updateChecker != null) {
             updateChecker.reload();
         }
@@ -168,6 +172,7 @@ public class DyRTP extends JavaPlugin {
             java.util.List<String> names = new java.util.ArrayList<>(Language.values().length + 1);
             for (Language language : Language.values()) names.add(language.fileName());
             names.add("players.yml");
+            names.add("portals.yml");
             for (String name : names) {
                 File file = new File(getDataFolder(), name);
                 if (file.exists()) new YamlConfiguration().load(file);
@@ -207,6 +212,11 @@ public class DyRTP extends JavaPlugin {
 
     public RtpService getRtpService() {
         return rtpService;
+    }
+
+    /** RTP portal regions from portals.yml. */
+    public dev.dyrtp.portal.PortalStore getPortals() {
+        return portals;
     }
 
     /** PlaceholderAPI classes are only touched when that plugin is present and the switch is on. */

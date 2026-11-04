@@ -32,7 +32,7 @@ final class ConfigValidator {
         bounded(config, "economy.confirmation.timeout-seconds", 1, 86400);
         bounded(config, "first-join-rtp.delay-seconds", 0, 86400);
         bounded(config, "death-rtp.delay-ticks", 0, 1728000);
-        for (String path : Set.of("rtp.queue.worlds", "rtp.disabled-worlds", "rtp.safety.blacklisted-blocks",
+        for (String path : Set.of("rtp.queue.worlds", "rtp.disabled-worlds", "world-selection.worlds", "rtp.safety.blacklisted-blocks",
                 "rtp.safety.blacklisted-biomes", "rtp.default-world.allowed-biomes")) {
             stringList(config, path);
         }
@@ -42,11 +42,20 @@ final class ConfigValidator {
             ConfigurationSection world = worlds.getConfigurationSection(name);
             if (world == null) invalid("rtp.worlds." + name, "expected a mapping");
             validateWorld(world, config.getConfigurationSection("rtp.default-world"), "rtp.worlds." + name);
+            if (world.contains("price")) {
+                if (!(world.get("price") instanceof Number number) || !Double.isFinite(number.doubleValue()) || number.doubleValue() < 0)
+                    invalid("rtp.worlds." + name + ".price", "must be a finite, non-negative number");
+            }
+            if (world.contains("cooldown")) {
+                if (!(world.get("cooldown") instanceof Number number) || number.doubleValue() != number.intValue() || number.intValue() < 0)
+                    invalid("rtp.worlds." + name + ".cooldown", "expected a non-negative whole number of seconds");
+            }
         }
         for (String key : config.getKeys(true)) {
             Object value = config.get(key);
             if (key.endsWith(".enabled") || key.endsWith(".ignore-cooldown") || key.endsWith(".ignore-economy")
-                    || key.equals("group.member-cooldown") || key.equals("integrations.dyhomes.sethome-hint")) {
+                    || key.equals("group.member-cooldown") || key.equals("integrations.dyhomes.sethome-hint")
+                    || key.equals("portals.skip-warmup")) {
                 if (!(value instanceof Boolean)) invalid(key, "expected true or false");
             }
         }

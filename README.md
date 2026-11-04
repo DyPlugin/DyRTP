@@ -4,11 +4,21 @@
 
 DyRTP is a command-based random teleport plugin for survival, SMP and economy servers. Help players find new places, choose where they can travel and configure each world without a GUI.
 
-DyRTP combines configurable world profiles, destination safety checks, optional protection hooks and economy support with a familiar command-based workflow. **Version 1.2.0** runs on Folia from the same JAR and adds ready spots for instant teleports, group RTP and a DyHomes shortcut, while preserving existing settings, aliases and player preferences.
+DyRTP combines configurable world profiles, destination safety checks, optional protection hooks and economy support with a familiar command-based workflow. **Version 1.3.0** lets players choose the world they travel to and adds RTP signs and portal regions, while preserving existing settings, aliases and player preferences.
 
 ---
 
-## New in 1.2.0
+## New in 1.3.0
+
+**Choose a world.** With `world-selection.enabled`, `/rtp world <world>` (or `/rtp <world>`) searches in another world, for example the Nether. `world-selection.worlds` limits the choice, and `dyrtp.world.<world>` controls it per world.
+
+**Price and cooldown per world.** `rtp.worlds.<world>.price` and `rtp.worlds.<world>.cooldown` give RTP into a world its own price and wait.
+
+**RTP signs.** Administrators write `[RTP]` on a sign, with an optional world on the second line; right-clicking it starts an RTP.
+
+**Portal regions.** `/dyrtp admin portal pos1`, `pos2` and `create <name> [world]` turn an area into a portal: walking into it starts an RTP. Good for a spawn exit.
+
+## Added in 1.2.0
 
 **Folia.** The same JAR runs on Bukkit, Spigot, Paper, Purpur and Folia. On Folia every destination is checked on the thread that owns it.
 
@@ -44,13 +54,13 @@ DyRTP combines configurable world profiles, destination safety checks, optional 
 
 | Server | JAR |
 | --- | --- |
-| Bukkit, Spigot, Paper, Purpur, Folia | `DyRTP-1.2.0.jar` |
+| Bukkit, Spigot, Paper, Purpur, Folia | `DyRTP-1.3.0.jar` |
 
 Install **one** JAR per server. Stop the server and back up the complete DyRTP folder before replacing an older JAR. Existing world profiles, player preferences and custom translations are retained.
 
-Java 17 bytecode; use the runtime required by your server. Minecraft 1.20.x–26.x is the release listing; the 1.2.0 live checks used Purpur 1.20.4, Folia 1.20.4, Spigot 26.3 and Paper 26.2. Optional integrations must support your selected server too. Historical 1.0.0 downloads retain their original filenames.
+Java 17 bytecode; use the runtime required by your server. Minecraft 1.20.x–26.x is the release listing; the 1.3.0 live checks used Paper 26.2 and Folia 1.20.4. Optional integrations must support your selected server too. Historical 1.0.0 downloads retain their original filenames.
 
-[Downloads](https://github.com/DyPlugin/DyRTP/releases/tag/1.2.0) · [Compatibility notes](https://github.com/DyPlugin/DyRTP/blob/main/docs/verification.md)
+[Downloads](https://github.com/DyPlugin/DyRTP/releases/tag/1.3.0) · [Compatibility notes](https://github.com/DyPlugin/DyRTP/blob/main/docs/verification.md)
 
 ## Why DyRTP?
 
@@ -81,6 +91,7 @@ Measured with DyRTP 1.1.0 on Paper 26.1.2 with one non-OP client: DyRTP had the 
 | `/dyrtp biome <biome>` | Teleport to a random place in a chosen biome |
 | `/dyrtp group <player>` | Invite a player to travel with your next RTP |
 | `/dyrtp group join`, `decline`, `leave` | Answer an invitation or leave the group |
+| `/dyrtp world <world>` or `/rtp <world>` | Teleport to a random place in another world |
 | `/dyrtp language <auto/en/tr/de/es/ru>` | Save your language preference |
 | `/dyrtp confirm` | Confirm your current paid RTP request |
 | `/dyrtp cancel` | Reject your pending confirmation |
@@ -94,6 +105,7 @@ Measured with DyRTP 1.1.0 on Paper 26.1.2 with one non-OP client: DyRTP had the 
 | `/dyrtp admin radius max <blocks>` | Configure the maximum radius |
 | `/dyrtp admin language <auto/en/tr/de/es/ru>` | Configure the global language |
 | `/dyrtp admin reload` | Validate and reload settings and messages |
+| `/dyrtp admin portal <pos1/pos2/create/delete/list>` | Manage RTP portal regions |
 
 `/dyr`, `/rtp`, `/randomtp`, `/wild`, `/wildtp`, `/rastgeletp`, `/rastgeleteleport`, `/forcertp` and `/rtpforce` remain accepted. Existing English, Turkish and ASCII spellings remain accepted when typed manually, including `yonetim`. Help and TAB show the effective language, with the administration branch consistently named `admin`. Player names and other data arguments are never translated. Administrative settings and force commands work from the console; self-RTP and personal language changes require a player.
 
@@ -113,6 +125,9 @@ Global `language.default: en`, `tr`, `de`, `es` or `ru` overrides saved preferen
 | `dyrtp.bypass.warmup` | op | Skip warmup |
 | `dyrtp.bypass.economy` | op | Skip payment |
 | `dyrtp.biome` | true | Choose a biome with `/dyrtp biome` |
+| `dyrtp.world.*`, `dyrtp.world.<world>` | true (`*`) | Choose a world with `/dyrtp world` |
+| `dyrtp.sign` | true | Use RTP signs |
+| `dyrtp.portal` | true | Use RTP portal regions |
 | `dyrtp.cooldown.<seconds>` | not set | Own cooldown; the lowest wins |
 | `dyrtp.price.<amount>` | not set | Own price; the lowest wins |
 | `dyrtp.radius.<blocks>` | not set | Own farthest distance; the highest wins |
@@ -157,7 +172,7 @@ Release listing: Minecraft 1.20.x through currently available 26.x releases on B
 gradle clean build
 ```
 
-Use Gradle 9.1 with Java 25, or a Gradle/JDK combination supporting the Java 17 source target. The JAR is `build/libs/DyRTP-1.1.0.jar`. JUnit/Mockito tests are test dependencies only. See [verification record](docs/verification.md) for automated versus actual server coverage and limitations, and [changelog](CHANGELOG.md) for changes from the last stable 1.0.0 release.
+Use Gradle 9.1 with Java 25, or a Gradle/JDK combination supporting the Java 17 source target. The JAR is `build/libs/DyRTP-1.3.0.jar`. JUnit/Mockito tests are test dependencies only. See [verification record](docs/verification.md) for automated versus actual server coverage and limitations, and [changelog](CHANGELOG.md) for changes from the last stable 1.0.0 release.
 
 An isolated [BetterRTP comparison](docs/betterrtp-comparison.md) records common command-to-teleport measurements across five scenarios. Results vary by profile; they do not establish a universal performance or safety advantage.
 
@@ -168,7 +183,7 @@ DyRTP Source-Available License 1.0, the same terms as DyClaim: free to use and m
 ## Get started
 
 1. Stop the server and back up the current JAR and complete `plugins/DyRTP/` folder.
-2. Install `DyRTP-1.1.0.jar` and start the server to generate any missing defaults.
+2. Install `DyRTP-1.3.0.jar` and start the server to generate any missing defaults.
 3. Configure your worlds, safety checks and English/Turkish messages.
 4. Run `/dyrtp admin reload` to apply valid settings.
 

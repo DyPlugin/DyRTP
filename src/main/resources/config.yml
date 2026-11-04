@@ -43,6 +43,10 @@ rtp:
   #     max-radius: 10000
   #     min-radius: 250
   #     shape: circle
+  #   world_nether:
+  #     # Own price and cooldown (seconds) for RTP into this world; rank permissions still replace them.
+  #     price: 250
+  #     cooldown: 600
   search:
     # Maximum candidate attempts per request: 1-10000. Higher values do more work.
     max-attempts: 240
@@ -159,6 +163,28 @@ biome-selection:
   # A biome search tries more spots than a normal one: 1-10000 attempts and 1-300 seconds.
   max-attempts: 1000
   timeout-seconds: 60
+
+world-selection:
+  # /rtp world <world> (or /rtp <world>) lets players search in another world, for example the Nether.
+  # A player needs dyrtp.world.<world> or dyrtp.world.* (given to everyone by default).
+  enabled: false
+  # Worlds players may choose, for example [world, world_nether, world_the_end]. Empty allows every loaded world
+  # that is not in rtp.disabled-worlds.
+  worlds: []
+
+signs:
+  # Administrators write [RTP] on the first line of a sign; right-clicking it starts an RTP (needs dyrtp.sign).
+  # The second line may name a world to send players to; empty uses the usual world.
+  enabled: true
+  # Text that marks an RTP sign on its first line, and its colour once the sign is made.
+  header: '[RTP]'
+  header-color: '&a&l'
+
+portals:
+  # Walking into a region made with /dyrtp admin portal starts an RTP (needs dyrtp.portal). Good for a spawn exit.
+  enabled: true
+  # Portals teleport right away; the warmup would be cancelled by the step into the portal anyway.
+  skip-warmup: true
 
 group:
   # /dyrtp group <player> invites players; those who accept travel with the leader's next /rtp.

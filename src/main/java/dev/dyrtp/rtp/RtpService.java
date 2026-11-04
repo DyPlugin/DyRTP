@@ -78,16 +78,28 @@ public class RtpService {
     }
 
     public void request(Player player, RtpCause cause) {
-        request(player, cause, null, null);
+        request(player, cause, null, null, null);
     }
 
     /** Like request(player, cause), but only places in the given biome qualify; null means any biome. */
     public void request(Player player, RtpCause cause, String biome) {
-        request(player, cause, null, biome);
+        request(player, cause, null, biome, null);
     }
 
-    private void request(Player player, RtpCause cause, PendingConfirmation confirmed, String biome) {
-        if (confirmed != null) biome = confirmed.biome();
+    /** RTP into a chosen world (/rtp world, an RTP sign or portal); null keeps the usual destination world. */
+    public void request(Player player, RtpCause cause, String biome, World chosen) {
+        request(player, cause, null, biome, chosen);
+    }
+
+    private void request(Player player, RtpCause cause, PendingConfirmation confirmed, String biome, World chosen) {
+        if (confirmed != null) {
+            biome = confirmed.biome();
+            chosen = confirmed.chosenWorld() ? Bukkit.getWorld(confirmed.world()) : null;
+            if (confirmed.chosenWorld() && chosen == null) {
+                sendRtp(player, "rtp.world-disabled");
+                return;
+            }
+        }
         if (!player.isOnline() || player.isDead() || !plugin.isEnabled()) return;
         if (cause == RtpCause.COMMAND && !player.hasPermission("dyrtp.use")) {
             messages.send(player, "general.no-permission");
@@ -104,7 +116,7 @@ public class RtpService {
             return;
         }
 
-        World world = targetWorld(player, cause);
+        World world = chosen != null ? chosen : targetWorld(player, cause);
         if (world == null) {
             sendRtp(player, "rtp.world-disabled");
             return;
@@ -130,7 +142,7 @@ public class RtpService {
             }
         }
 
-        double quotedCost = costApplies(player, cause) ? economy.cost(player) : 0;
+        double quotedCost = costApplies(player, cause, world) ? economy.cost(player, world) : 0;
         if (confirmed != null && (!confirmed.world().equals(world.getUID())
                 || !confirmed.sourceWorld().equals(player.getWorld().getUID())
                 || Double.compare(confirmed.cost(), quotedCost) != 0)) {
@@ -152,7 +164,7 @@ public class RtpService {
                 return;
             }
             if (confirmed == null && plugin.getConfig().getBoolean("economy.confirmation.enabled", true)) {
-                askConfirmation(player, cause, world, quotedCost, biome);
+                askConfirmation(player, cause, world, quotedCost, biome, chosen != null);
                 return;
             }
         }
@@ -176,7 +188,7 @@ public class RtpService {
             return;
         }
         sendRtp(player, "rtp.confirmed");
-        request(player, confirmation.cause(), confirmation, confirmation.biome());
+        request(player, confirmation.cause(), confirmation, confirmation.biome(), null);
     }
 
     public void reject(Player player) {
@@ -247,6 +259,7 @@ public class RtpService {
     }
 
     private boolean warmupEnabled(Player player, RtpCause cause) {
+        if (cause == RtpCause.PORTAL && plugin.getConfig().getBoolean("portals.skip-warmup", true)) return false;
         return !cause.ignoreCooldown(plugin)
                 && plugin.getConfig().getBoolean("warmup.enabled", false)
                 && plugin.getConfig().getInt("warmup.seconds", 0) > 0
@@ -395,7 +408,7 @@ public class RtpService {
 
     private void payAndTeleport(Request request, Location target, int attempts, World world, RtpCause cause) {
         Player player = request.player;
-        double currentCost = costApplies(player, cause) ? economy.cost(player) : 0;
+        double currentCost = costApplies(player, cause, world) ? economy.cost(player, world) : 0;
         if (Double.compare(currentCost, request.cost) != 0) {
             cancelSilently(player);
             sendRtp(player, "rtp.confirmation-changed");
@@ -550,7 +563,8 @@ public class RtpService {
 
     /** What /rtp would cost this player right now; 0 when it is free for them. */
     public double price(Player player) {
-        return costApplies(player, RtpCause.COMMAND) ? economy.cost(player) : 0D;
+        World world = destinationWorld(player);
+        return costApplies(player, RtpCause.COMMAND, world) ? economy.cost(player, world) : 0D;
     }
 
     public String formatCooldown(Player player, long seconds) {
@@ -655,19 +669,19 @@ public class RtpService {
         player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(message));
     }
 
-    private boolean costApplies(Player player, RtpCause cause) {
+    private boolean costApplies(Player player, RtpCause cause, World world) {
         return !cause.ignoreEconomy(plugin)
                 && economy.enabled()
                 && economy.available()
-                && economy.cost(player) > 0.0D
+                && economy.cost(player, world) > 0.0D
                 && !player.hasPermission("dyrtp.bypass.economy");
     }
 
-    private void askConfirmation(Player player, RtpCause cause, World world, double cost, String biome) {
+    private void askConfirmation(Player player, RtpCause cause, World world, double cost, String biome, boolean chosenWorld) {
         int timeout = Math.max(5, plugin.getConfig().getInt("economy.confirmation.timeout-seconds", 30));
         String token = UUID.randomUUID().toString();
         confirmations.put(player.getUniqueId(), new PendingConfirmation(cause, System.currentTimeMillis() + timeout * 1000L,
-                world.getUID(), player.getWorld().getUID(), cost, token, biome));
+                world.getUID(), player.getWorld().getUID(), cost, token, biome, chosenWorld));
         Map<String, String> placeholders = Map.of("{cost}", economy.format(cost));
         sendRtp(player, "rtp.confirm-price", placeholders);
 
@@ -775,7 +789,8 @@ public class RtpService {
 
     private record DestinationChunk(World world, int x, int z) { }
 
-    private record PendingConfirmation(RtpCause cause, long expiresAt, UUID world, UUID sourceWorld, double cost, String token, String biome) {
+    private record PendingConfirmation(RtpCause cause, long expiresAt, UUID world, UUID sourceWorld, double cost, String token, String biome,
+                                       boolean chosenWorld) {
 
         private boolean expired() {
             return System.currentTimeMillis() > expiresAt;
