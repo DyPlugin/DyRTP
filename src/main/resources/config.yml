@@ -80,6 +80,9 @@ rtp:
     require-natural-sky-access: true
     # Reject locations too close to the player's current position. 0 disables it.
     min-distance-from-current: 250
+    # Keep destinations at least this many blocks away from other players: 0-512; 0 turns it off.
+    # Spectators and the player asking are not counted. Checked again just before the teleport.
+    avoid-players-radius: 0
     # Optional ravine/steep-hole check. 0 keeps RTP fast; raise to 1-2 for stricter terrain checks.
     nearby-surface-radius: 0
     max-nearby-surface-drop: 8
@@ -171,6 +174,41 @@ world-selection:
   # Worlds players may choose, for example [world, world_nether, world_the_end]. Empty allows every loaded world
   # that is not in rtp.disabled-worlds.
   worlds: []
+
+distance-presets:
+  # /rtp near and /rtp far search between their own distances from the world's center (needs dyrtp.near or dyrtp.far).
+  # The world border still limits the distance; cooldown and price apply as for /rtp.
+  enabled: false
+  near:
+    min-radius: 100
+    max-radius: 1000
+  far:
+    min-radius: 5000
+    max-radius: 20000
+
+back:
+  # /rtp back takes a player once to where they stood before their last /rtp, sign or portal RTP (needs dyrtp.back).
+  enabled: false
+  # Seconds the way back stays open: 0-86400; 0 keeps it until the next RTP.
+  expire-seconds: 120
+  # Seconds between two uses of /rtp back: 0-86400; 0 turns it off. dyrtp.bypass.cooldown skips it.
+  cooldown-seconds: 0
+
+stats:
+  # Counts each player's successful random teleports for /rtp stats and %dyrtp_count%; stored in players.yml.
+  enabled: false
+
+after-teleport-commands:
+  # Commands run after a successful RTP, for example a starter kit. Start a line with console: or player:;
+  # a line without one runs from the console. {player}, {world}, {x}, {y} and {z} are filled in.
+  enabled: false
+  # Only after a player's first successful RTP. RTPs are counted from the version that added this setting on.
+  first-rtp-only: false
+  commands: []
+  # Example:
+  # commands:
+  #   - 'console: give {player} bread 16'
+  #   - 'player: spawnpoint'
 
 signs:
   # Administrators write [RTP] on the first line of a sign; right-clicking it starts an RTP (needs dyrtp.sign).

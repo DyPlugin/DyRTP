@@ -98,3 +98,18 @@ permissions:
   dyrtp.portal:
     description: Use RTP portal regions.
     default: true
+  dyrtp.near:
+    description: Use /rtp near when distance-presets are on.
+    default: true
+  dyrtp.far:
+    description: Use /rtp far when distance-presets are on.
+    default: true
+  dyrtp.back:
+    description: Use /rtp back to return once to where you were before your last RTP.
+    default: true
+  dyrtp.stats:
+    description: See your own RTP count with /rtp stats.
+    default: true
+  dyrtp.stats.others:
+    description: See another player's RTP count with /rtp stats <player>.
+    default: op

@@ -32,8 +32,19 @@ final class ConfigValidator {
         bounded(config, "economy.confirmation.timeout-seconds", 1, 86400);
         bounded(config, "first-join-rtp.delay-seconds", 0, 86400);
         bounded(config, "death-rtp.delay-ticks", 0, 1728000);
+        bounded(config, "rtp.safety.avoid-players-radius", 0, 512);
+        bounded(config, "back.expire-seconds", 0, 86400);
+        bounded(config, "back.cooldown-seconds", 0, 86400);
+        for (String preset : Set.of("near", "far")) {
+            String path = "distance-presets." + preset;
+            bounded(config, path + ".min-radius", 0, 29999983);
+            bounded(config, path + ".max-radius", 1, 29999984);
+            if (config.contains(path + ".min-radius") && config.contains(path + ".max-radius")
+                    && config.getInt(path + ".min-radius") >= config.getInt(path + ".max-radius"))
+                invalid(path, "min-radius must be below max-radius");
+        }
         for (String path : Set.of("rtp.queue.worlds", "rtp.disabled-worlds", "world-selection.worlds", "rtp.safety.blacklisted-blocks",
-                "rtp.safety.blacklisted-biomes", "rtp.default-world.allowed-biomes")) {
+                "rtp.safety.blacklisted-biomes", "rtp.default-world.allowed-biomes", "after-teleport-commands.commands")) {
             stringList(config, path);
         }
         validateWorld(config.getConfigurationSection("rtp.default-world"), null, "rtp.default-world");
@@ -55,7 +66,7 @@ final class ConfigValidator {
             Object value = config.get(key);
             if (key.endsWith(".enabled") || key.endsWith(".ignore-cooldown") || key.endsWith(".ignore-economy")
                     || key.equals("group.member-cooldown") || key.equals("integrations.dyhomes.sethome-hint")
-                    || key.equals("portals.skip-warmup")) {
+                    || key.equals("portals.skip-warmup") || key.equals("after-teleport-commands.first-rtp-only")) {
                 if (!(value instanceof Boolean)) invalid(key, "expected true or false");
             }
         }

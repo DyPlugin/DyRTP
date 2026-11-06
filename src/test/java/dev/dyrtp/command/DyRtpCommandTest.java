@@ -206,7 +206,7 @@ class DyRtpCommandTest {
         when(sender.hasPermission("dyrtp.admin")).thenReturn(true);
         assertTrue(executor.onTabComplete(sender, command, "dyra", new String[]{""}).contains("reload"));
         executor.onCommand(sender, command, "dyra", new String[]{});
-        verify(messages).getList(sender, "admin.help-v5");
+        verify(messages).getList(sender, "admin.help-v6");
     }
     @Test void helpOmitsItsOwnCommandLine() {
         Command command = mock(Command.class);

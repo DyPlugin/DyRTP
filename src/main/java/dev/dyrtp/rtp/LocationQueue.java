@@ -67,7 +67,7 @@ public class LocationQueue {
     /** Searches for spots in the background until the world has rtp.queue.size of them. One search per world at a time. */
     public void refill(World world) {
         int target = size();
-        if (target == 0 || !plugin.isEnabled() || plugin.getConfig().getStringList("rtp.disabled-worlds").contains(world.getName())) return;
+        if (target == 0 || !plugin.isEnabled() || dev.dyrtp.util.ConfigCache.stringSet(plugin.getConfig(), "rtp.disabled-worlds").contains(world.getName())) return;
         Deque<Location> queue = spots.computeIfAbsent(world.getUID(), id -> new ArrayDeque<>());
         synchronized (queue) {
             if (queue.size() >= target) return;

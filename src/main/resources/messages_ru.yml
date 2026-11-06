@@ -30,6 +30,9 @@ general:
   help-biome: "&a/dyrtp biome <biome> &7- Телепорт в случайное место выбранного биома"
   help-group: "&a/dyrtp group <игрок> &7- Пригласить игрока в следующий RTP вместе"
   help-world: "&a/dyrtp world <мир> &7- Телепорт в случайное место другого мира"
+  help-near: "&a/dyrtp near|far &7- Телепорт в случайное место поблизости или далеко"
+  help-back: "&a/dyrtp back &7- Один раз вернуться туда, где вы были до последнего RTP"
+  help-stats: "&a/dyrtp stats &7- Узнать, сколько раз вы использовали RTP"
   help-confirm: "&a/dyrtp confirm &7- Подтвердить ожидающий RTP"
   help-cancel: "&a/dyrtp cancel &7- Отменить ожидающий RTP"
   help-admin: "&a/dyrtp admin &7- Показать команды администратора"
@@ -60,6 +63,9 @@ general:
 admin:
   global-language-changed: "{prefix} &aЯзыковой режим сервера теперь &f{language}&a."
   force-started: "{prefix} &aПринудительный RTP запущен для &f{player}&a."
+  test-started: "{prefix} &7Проверка поиска в мире &f{world}&7..."
+  test-found: "{prefix} &aБезопасное место в мире &f{world}&a: X: &f{x} &aY: &f{y} &aZ: &f{z}&a, попыток: &f{attempts}&a, время: &f{ms} мс&a."
+  test-failed: "{prefix} &cБезопасное место в мире &f{world}&c не найдено. Попыток: &f{attempts}&c, время: &f{ms} мс&c."
   help:
     - "&8&m----------&r &aDyRTP &fАдмин &8&m----------"
     - "&a/dyrtp admin economy <on|off> &7- Включить или выключить платные телепорты"
@@ -118,6 +124,20 @@ admin:
     - "&a/dyrtp admin reload &7- Перезагрузить настройки и сообщения"
     - "&a/dyrtp admin portal <pos1|pos2|create|delete|list> &7- Управление зонами RTP-порталов"
     - "&8&m--------------------------------"
+  help-v6:
+    - "&8&m----------&r &aDyRTP &fАдмин &8&m----------"
+    - "&a/dyrtp admin force <player> &7- Запустить RTP для игрока в сети"
+    - "&a/dyrtp admin economy <on|off> &7- Включить или выключить платные телепорты"
+    - "&a/dyrtp admin price <cost> &7- Установить цену телепорта"
+    - "&a/dyrtp admin cooldown <seconds|off> &7- Установить задержку между использованиями"
+    - "&a/dyrtp admin delay <seconds|off> &7- Установить задержку перед телепортом"
+    - "&a/dyrtp admin radius min <blocks> &7- Установить минимальное расстояние RTP"
+    - "&a/dyrtp admin radius max <blocks> &7- Установить максимальное расстояние RTP"
+    - "&a/dyrtp admin language <en|tr|de|es|ru|auto> &7- Установить языковой режим сервера"
+    - "&a/dyrtp admin reload &7- Перезагрузить настройки и сообщения"
+    - "&a/dyrtp admin portal <pos1|pos2|create|delete|list> &7- Управление зонами RTP-порталов"
+    - "&a/dyrtp admin test [world] &7- Проверить поиск и показать время и число попыток"
+    - "&8&m--------------------------------"
 updates:
   available: "{prefix} &aДоступна новая версия DyRTP: &f{latest} &7(Текущая: &f{current}&7) &e{url}"
 rtp:
@@ -146,6 +166,7 @@ rtp:
   world-choice-disabled: "{prefix} &cВыбор мира на этом сервере отключён."
   world-usage: "{prefix} &7Используйте &f/dyrtp world <мир>&7. Доступные миры: &f{worlds}"
   world-unknown: "{prefix} &f{world} &c— недоступный мир. Доступные миры: &f{worlds}"
+  preset-disabled: "{prefix} &cБлижний и дальний телепорт на этом сервере отключены."
   group-brought: "{prefix} &aВаша группа из &f{count}&a отправилась с вами."
   group-arrived: "{prefix} &aВы отправились вместе с группой &f{leader}&a."
   group-too-far: "{prefix} &c{leader} телепортировался, но вы были слишком далеко."
@@ -233,3 +254,13 @@ portals:
   none: "{prefix} &7RTP-порталов пока нет."
   list-header: "&8&m----------&r &aDyRTP &fПорталы &8&m----------"
   list-entry: "&a{name} &7- {world} &f{from} &7— &f{to} &7-> &f{target}"
+back:
+  disabled: "{prefix} &cВозврат после RTP на этом сервере отключён."
+  none: "{prefix} &cВам некуда вернуться. Место хранится недолго после RTP."
+  cooldown: "{prefix} &cВернуться снова можно через &f{time}&c."
+  returned: "{prefix} &aВы вернулись туда, где были до RTP."
+  failed: "{prefix} &cНе удалось вернуть вас. Попробуйте ещё раз."
+stats:
+  disabled: "{prefix} &cСтатистика RTP на этом сервере отключена."
+  self: "{prefix} &7Вы использовали RTP &f{count}&7 раз."
+  other: "{prefix} &f{player} &7использовал RTP &f{count}&7 раз."

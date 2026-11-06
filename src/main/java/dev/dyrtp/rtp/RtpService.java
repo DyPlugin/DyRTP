@@ -46,6 +46,12 @@ public class RtpService {
     private final Map<UUID, PendingConfirmation> confirmations = new ConcurrentHashMap<>();
     private final Map<UUID, Request> active = new ConcurrentHashMap<>();
     private final Map<UUID, Request> teleporting = new ConcurrentHashMap<>();
+    /** The near/far preset of a paid request waiting for confirmation. */
+    private final Map<UUID, DistancePreset> confirmationPresets = new ConcurrentHashMap<>();
+    /** Where each player stood before their last RTP, for /rtp back. */
+    private final Map<UUID, ReturnPoint> returns = new ConcurrentHashMap<>();
+    /** When each player last used /rtp back, for back.cooldown-seconds. */
+    private final Map<UUID, Long> lastBack = new ConcurrentHashMap<>();
     // Bukkit tickets belong to a plugin, so simultaneous warmups sharing a chunk
     // must release the ticket only when the last request finishes.
     private final Map<DestinationChunk, Integer> warmupChunks = new HashMap<>();
@@ -88,10 +94,19 @@ public class RtpService {
 
     /** RTP into a chosen world (/rtp world, an RTP sign or portal); null keeps the usual destination world. */
     public void request(Player player, RtpCause cause, String biome, World chosen) {
-        request(player, cause, null, biome, chosen);
+        request(player, cause, null, biome, chosen, null);
+    }
+
+    /** /rtp near or /rtp far: the search keeps between the preset's two distances. */
+    public void request(Player player, RtpCause cause, DistancePreset preset) {
+        request(player, cause, null, null, null, preset);
     }
 
     private void request(Player player, RtpCause cause, PendingConfirmation confirmed, String biome, World chosen) {
+        request(player, cause, confirmed, biome, chosen, null);
+    }
+
+    private void request(Player player, RtpCause cause, PendingConfirmation confirmed, String biome, World chosen, DistancePreset preset) {
         if (confirmed != null) {
             biome = confirmed.biome();
             chosen = confirmed.chosenWorld() ? Bukkit.getWorld(confirmed.world()) : null;
@@ -129,7 +144,7 @@ public class RtpService {
             return;
         }
         world = requestEvent.getWorld();
-        if (world == null || plugin.getConfig().getStringList("rtp.disabled-worlds").contains(world.getName())) {
+        if (world == null || dev.dyrtp.util.ConfigCache.stringSet(plugin.getConfig(), "rtp.disabled-worlds").contains(world.getName())) {
             sendRtp(player, "rtp.world-disabled");
             return;
         }
@@ -165,11 +180,13 @@ public class RtpService {
             }
             if (confirmed == null && plugin.getConfig().getBoolean("economy.confirmation.enabled", true)) {
                 askConfirmation(player, cause, world, quotedCost, biome, chosen != null);
+                if (preset != null) confirmationPresets.put(player.getUniqueId(), preset);
+                else confirmationPresets.remove(player.getUniqueId());
                 return;
             }
         }
 
-        searchAndTeleport(player, world, cause, quotedCost, biome);
+        searchAndTeleport(player, world, cause, quotedCost, biome, preset);
     }
 
     public void confirm(Player player) {
@@ -187,8 +204,9 @@ public class RtpService {
             sendRtp(player, "rtp.no-confirmation");
             return;
         }
+        DistancePreset preset = confirmationPresets.remove(player.getUniqueId());
         sendRtp(player, "rtp.confirmed");
-        request(player, confirmation.cause(), confirmation, confirmation.biome(), null);
+        request(player, confirmation.cause(), confirmation, confirmation.biome(), null, preset);
     }
 
     public void reject(Player player) {
@@ -248,6 +266,7 @@ public class RtpService {
         for (Request request : java.util.List.copyOf(active.values())) cancelSilently(request.player);
         pending.clear();
         confirmations.clear();
+        confirmationPresets.clear();
         active.clear();
     }
 
@@ -301,7 +320,7 @@ public class RtpService {
         pending.put(player.getUniqueId(), new PendingTeleport(task, player.getLocation()));
     }
 
-    private void searchAndTeleport(Player player, World world, RtpCause cause, double cost, String biome) {
+    private void searchAndTeleport(Player player, World world, RtpCause cause, double cost, String biome, DistancePreset preset) {
         if (!player.isOnline()) {
             return;
         }
@@ -315,6 +334,13 @@ public class RtpService {
         sendActionbar(player, messages.get(player, "rtp.searching-safe"));
 
         request.biome = biome;
+        request.preset = preset;
+        if (preset != null) {
+            // Near and far keep to their own distances; ready spots and rank distances do not apply.
+            request.search = locationFinder.findBetween(world, request.origin, preset.minRadius(), preset.maxRadius());
+            awaitSearch(request, world, cause);
+            return;
+        }
         int rankRadius = ranks.maxRadius(player);
         Location queued = biome == null && rankRadius == 0 ? queue.take(world, request.origin) : null;
         if (queued != null) {
@@ -331,7 +357,9 @@ public class RtpService {
     private boolean retryLive(Request request, World world, RtpCause cause) {
         if (!request.fromQueue || !current(request)) return false;
         request.fromQueue = false;
-        request.search = locationFinder.find(world, request.origin, request.biome, ranks.maxRadius(request.player));
+        request.search = request.preset != null
+                ? locationFinder.findBetween(world, request.origin, request.preset.minRadius(), request.preset.maxRadius())
+                : locationFinder.find(world, request.origin, request.biome, ranks.maxRadius(request.player));
         awaitSearch(request, world, cause);
         return true;
     }
@@ -491,6 +519,7 @@ public class RtpService {
                 Bukkit.getPluginManager().callEvent(new DyRtpPostTeleportEvent(player, cause, target));
                 if (cause == RtpCause.COMMAND) teleportGroup(request, target, world);
                 sethomeHint(player);
+                afterTeleport(request, target);
             } finally {
                 active.remove(player.getUniqueId(), request);
                 releaseDestination(request);
@@ -530,6 +559,91 @@ public class RtpService {
             });
         }
         sendRtp(leader, "rtp.group-brought", Map.of("{count}", String.valueOf(members.size())));
+    }
+
+    /** Statistics, the /rtp back point and the configured after-teleport commands of a successful RTP. */
+    private void afterTeleport(Request request, Location target) {
+        Player player = request.player;
+        boolean counting = plugin.getConfig().getBoolean("stats.enabled", false)
+                || plugin.getConfig().getBoolean("after-teleport-commands.first-rtp-only", false);
+        boolean first = false;
+        if (counting && plugin.getPlayerDataStore() != null) {
+            first = plugin.getPlayerDataStore().addRtp(player.getUniqueId()) == 1;
+        }
+        if (backEnabled() && (request.cause == RtpCause.COMMAND || request.cause == RtpCause.PORTAL)) {
+            int expire = Math.max(0, plugin.getConfig().getInt("back.expire-seconds", 120));
+            returns.put(player.getUniqueId(), new ReturnPoint(request.origin.clone(),
+                    expire == 0 ? Long.MAX_VALUE : System.currentTimeMillis() + expire * 1000L));
+        }
+        AfterTeleportCommands.run(plugin, player, target, first);
+    }
+
+    private boolean backEnabled() {
+        return plugin.getConfig().getBoolean("back.enabled", false);
+    }
+
+    /** The outcome of /rtp back. */
+    public enum BackResult { DISABLED, NONE, BUSY, COOLDOWN, STARTED }
+
+    /**
+     * Sends the player back to where they stood before their last RTP, once. The point is kept for back.expire-seconds;
+     * back.cooldown-seconds spaces out uses. The result of the teleport itself is reported with back.returned or back.failed.
+     */
+    public BackResult back(Player player) {
+        if (!backEnabled()) return BackResult.DISABLED;
+        UUID uuid = player.getUniqueId();
+        if (active.containsKey(uuid) || teleporting.containsKey(uuid) || pending.containsKey(uuid)) return BackResult.BUSY;
+        ReturnPoint point = returns.get(uuid);
+        if (point == null || point.expiresAt() < System.currentTimeMillis() || point.location().getWorld() == null) {
+            returns.remove(uuid);
+            return BackResult.NONE;
+        }
+        if (backCooldown(player) > 0) return BackResult.COOLDOWN;
+        returns.remove(uuid, point);
+        lastBack.put(uuid, System.currentTimeMillis());
+        Location destination = point.location().clone();
+        destination.setYaw(player.getLocation().getYaw());
+        destination.setPitch(player.getLocation().getPitch());
+        plugin.scheduler().teleport(player, destination).whenComplete((done, failure) -> plugin.scheduler().runFor(player, () -> {
+            if (!player.isOnline()) return;
+            if (failure == null && Boolean.TRUE.equals(done)) {
+                sendRtp(player, "back.returned");
+                playSound(player, "feedback.sounds.success");
+            } else {
+                // A cancelled or failed teleport keeps the point for another try.
+                returns.putIfAbsent(uuid, point);
+                lastBack.remove(uuid);
+                sendRtp(player, "back.failed");
+            }
+        }));
+        return BackResult.STARTED;
+    }
+
+    /** Seconds until /rtp back may be used again; 0 when ready. */
+    public long backCooldown(Player player) {
+        int seconds = Math.max(0, plugin.getConfig().getInt("back.cooldown-seconds", 0));
+        Long last = lastBack.get(player.getUniqueId());
+        if (seconds == 0 || last == null || player.hasPermission("dyrtp.bypass.cooldown")) return 0L;
+        long remaining = last + seconds * 1000L - System.currentTimeMillis();
+        return Math.max(0L, (remaining + 999L) / 1000L);
+    }
+
+    /** True while the player has a place to return to with /rtp back. */
+    public boolean hasReturnPoint(Player player) {
+        ReturnPoint point = returns.get(player.getUniqueId());
+        return point != null && point.expiresAt() >= System.currentTimeMillis();
+    }
+
+    /** Drops per-player memory that only matters while the player is online. */
+    public void forgetPlayer(Player player) {
+        returns.remove(player.getUniqueId());
+        lastBack.remove(player.getUniqueId());
+        confirmationPresets.remove(player.getUniqueId());
+    }
+
+    /** One search in a world for /dyrtp admin test; it teleports nobody and uses no ready spot. */
+    public CompletableFuture<LocationFinder.SearchResult> testSearch(World world) {
+        return locationFinder.find(world, null);
     }
 
     /** With DyHomes installed, offers a click that prepares /sethome after a successful RTP. */
@@ -574,7 +688,7 @@ public class RtpService {
     /** The world /rtp would search in from the player's current world, or null when RTP is not allowed there. */
     public World destinationWorld(Player player) {
         World world = resolveWorld(player.getWorld());
-        return world == null || plugin.getConfig().getStringList("rtp.disabled-worlds").contains(world.getName()) ? null : world;
+        return world == null || dev.dyrtp.util.ConfigCache.stringSet(plugin.getConfig(), "rtp.disabled-worlds").contains(world.getName()) ? null : world;
     }
 
     public boolean isTeleporting(Player player) {
@@ -774,6 +888,7 @@ public class RtpService {
         private CompletableFuture<LocationFinder.SearchResult> search;
         private EconomyService.Withdrawal withdrawal;
         private String biome;
+        private DistancePreset preset;
         private volatile boolean fromQueue;
         private PotionEffect blindness;
         private int blindnessAppliedAt;
@@ -788,6 +903,8 @@ public class RtpService {
     }
 
     private record DestinationChunk(World world, int x, int z) { }
+
+    private record ReturnPoint(Location location, long expiresAt) { }
 
     private record PendingConfirmation(RtpCause cause, long expiresAt, UUID world, UUID sourceWorld, double cost, String token, String biome,
                                        boolean chosenWorld) {

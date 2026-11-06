@@ -4,19 +4,29 @@ import dev.dyrtp.DyRTP;
 import dev.dyrtp.platform.Scheduler;
 import dev.dyrtp.protection.ProtectionSnapshot;
 import dev.dyrtp.protection.ProtectionService;
+import dev.dyrtp.util.ConfigCache;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.WorldBorder;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.UnaryOperator;
 
 public class LocationFinder {
+
+    private static final double[] NO_PLAYERS = new double[0];
 
     private final DyRTP plugin;
     private final ProtectionService protection;
@@ -42,24 +52,40 @@ public class LocationFinder {
 
     /** maxRadius above 0 replaces the world's farthest distance for this search (dyrtp.radius.<blocks>). */
     public CompletableFuture<SearchResult> find(World world, Location origin, String biome, int maxRadius) {
+        return start(world, origin, biome, profile -> profile.withMaxRadius(maxRadius));
+    }
+
+    /** Searches between two distances from the world's center, for /rtp near and /rtp far. */
+    public CompletableFuture<SearchResult> findBetween(World world, Location origin, int minRadius, int maxRadius) {
+        return start(world, origin, null, profile -> profile.withRadii(minRadius, maxRadius));
+    }
+
+    private CompletableFuture<SearchResult> start(World world, Location origin, String biome, UnaryOperator<WorldProfile> shape) {
         CompletableFuture<SearchResult> future = new CompletableFuture<>();
         runMain(() -> {
             try {
-                int maximum = Math.max(1, Math.min(64, plugin.getConfig().getInt("rtp.search.max-concurrent-searches", 16)));
+                FileConfiguration config = plugin.getConfig();
+                int maximum = Math.max(1, Math.min(64, config.getInt("rtp.search.max-concurrent-searches", 16)));
                 if (searches.size() >= maximum || !plugin.isEnabled()) {
                     future.complete(new SearchResult(null, 0));
                     return;
                 }
                 searches.add(future);
                 future.whenComplete((result, error) -> searches.remove(future));
-                WorldProfile profile = WorldProfile.load(plugin, world).withMaxRadius(maxRadius);
+                WorldProfile profile = shape.apply(WorldProfile.load(plugin, world));
                 SearchState state = new SearchState(profile, SafetyRules.load(plugin, profile).withBiome(biome), protection.snapshot(), origin, future);
                 state.maxAttempts = biome == null
-                        ? Math.max(1, plugin.getConfig().getInt("rtp.search.max-attempts", 160))
-                        : Math.max(1, Math.min(10000, plugin.getConfig().getInt("biome-selection.max-attempts", 1000)));
+                        ? Math.max(1, config.getInt("rtp.search.max-attempts", 160))
+                        : Math.max(1, Math.min(10000, config.getInt("biome-selection.max-attempts", 1000)));
+                // Read once per search instead of once per batch.
+                state.batchSize = Math.max(1, Math.min(64, config.getInt("rtp.search.batch-size", 24)));
+                state.preferLoadedChunks = config.getBoolean("rtp.search.prefer-loaded-chunks", true);
+                state.waitForPreload = config.getBoolean("rtp.search.wait-for-preload", false);
+                state.avoidPlayersRadius = avoidPlayersRadius();
+                if (state.avoidPlayersRadius > 0) state.players = playerPositions(world, origin);
                 long timeout = Math.max(1, Math.min(300, biome == null
-                        ? plugin.getConfig().getLong("rtp.search.timeout-seconds", 30)
-                        : plugin.getConfig().getLong("biome-selection.timeout-seconds", 60)));
+                        ? config.getLong("rtp.search.timeout-seconds", 30)
+                        : config.getLong("biome-selection.timeout-seconds", 60)));
                 future.orTimeout(timeout, TimeUnit.SECONDS);
                 attemptSafely(state);
             } catch (RuntimeException error) {
@@ -82,7 +108,7 @@ public class LocationFinder {
         }
         try {
             World world = target.getWorld();
-            if (plugin.getConfig().getStringList("rtp.disabled-worlds").contains(world.getName())) return false;
+            if (ConfigCache.stringSet(plugin.getConfig(), "rtp.disabled-worlds").contains(world.getName())) return false;
             if (!world.isChunkLoaded(target.getBlockX() >> 4, target.getBlockZ() >> 4)) {
                 return false;
             }
@@ -98,7 +124,8 @@ public class LocationFinder {
                     return false;
                 }
             }
-            return true;
+            int avoid = avoidPlayersRadius();
+            return avoid <= 0 || !nearPlayer(playerPositions(world, origin), target.getX(), target.getZ(), avoid);
         } catch (RuntimeException error) {
             return false;
         }
@@ -118,24 +145,30 @@ public class LocationFinder {
         }
 
         int maxAttempts = state.maxAttempts;
-        int batchSize = Math.max(1, Math.min(64, plugin.getConfig().getInt("rtp.search.batch-size", 24)));
-        boolean preferLoadedChunks = plugin.getConfig().getBoolean("rtp.search.prefer-loaded-chunks", true);
+        int batchSize = state.batchSize;
+        World world = state.profile.world();
+        WorldBorder border = world.getWorldBorder();
+        Area area = area(state.profile, border);
+        // One reusable point for the border check instead of a new Location per candidate.
+        Location probe = state.probe;
         int launched = 0;
 
         while (launched < batchSize && state.attempts < maxAttempts && !state.future.isDone() && !state.completing) {
-            if (state.attempts >= maxAttempts) {
-                state.future.complete(new SearchResult(null, state.attempts));
-                return;
-            }
-
-            Candidate candidate = candidate(state.profile);
+            Candidate candidate = candidate(area);
             state.attempts++;
             launched++;
             int chunkX = candidate.x >> 4;
             int chunkZ = candidate.z >> 4;
 
-            if (!state.profile.world().getWorldBorder().isInside(
-                    new Location(state.profile.world(), candidate.x + 0.5D, 64, candidate.z + 0.5D))) {
+            probe.setX(candidate.x + 0.5D);
+            probe.setZ(candidate.z + 0.5D);
+            if (!border.isInside(probe)) {
+                continue;
+            }
+
+            // Too close to another player: rejected before any chunk is loaded or protection is asked.
+            if (state.avoidPlayersRadius > 0
+                    && nearPlayer(state.players, candidate.x + 0.5D, candidate.z + 0.5D, state.avoidPlayersRadius)) {
                 continue;
             }
 
@@ -144,7 +177,7 @@ public class LocationFinder {
             }
 
             // Folia: a chunk of another region may not be inspected here, so every candidate takes the loader path.
-            if (!Scheduler.FOLIA && preferLoadedChunks && state.profile.world().isChunkLoaded(chunkX, chunkZ)) {
+            if (!Scheduler.FOLIA && state.preferLoadedChunks && world.isChunkLoaded(chunkX, chunkZ)) {
                 Location safe = checkCandidate(state, candidate);
                 if (safe != null) {
                     completeFound(state, safe);
@@ -154,8 +187,8 @@ public class LocationFinder {
             }
 
             state.inFlight++;
-            Location owner = new Location(state.profile.world(), candidate.x + 0.5D, 64, candidate.z + 0.5D);
-            chunkLoader.load(state.profile.world(), chunkX, chunkZ).whenComplete((chunk, throwable) ->
+            Location owner = new Location(world, candidate.x + 0.5D, 64, candidate.z + 0.5D);
+            chunkLoader.load(world, chunkX, chunkZ).whenComplete((chunk, throwable) ->
                     // The candidate is checked on the thread that owns it; the search continues on the main or global thread.
                     plugin.scheduler().runAt(owner, () -> {
                         state.inFlight--;
@@ -200,7 +233,8 @@ public class LocationFinder {
     }
 
     private Location checkCandidate(SearchState state, Candidate candidate) {
-        Location safe = safeLocationChecker.findSafe(state.profile, state.rules, candidate.x, candidate.z);
+        // The world border was checked when the candidate was picked.
+        Location safe = safeLocationChecker.findSafeInsideBorder(state.profile, state.rules, candidate.x, candidate.z);
         if (safe == null || tooCloseToOrigin(state, safe)) {
             return null;
         }
@@ -209,8 +243,7 @@ public class LocationFinder {
 
     private void completeFound(SearchState state, Location safe) {
         state.completing = true;
-        boolean waitForPreload = plugin.getConfig().getBoolean("rtp.search.wait-for-preload", false);
-        if (!waitForPreload) {
+        if (!state.waitForPreload) {
             state.future.complete(new SearchResult(safe, state.attempts));
             chunkLoader.preload(safe.getWorld(), safe.getBlockX() >> 4, safe.getBlockZ() >> 4);
             return;
@@ -238,25 +271,35 @@ public class LocationFinder {
         plugin.scheduler().runMain(runnable);
     }
 
-    private Candidate candidate(WorldProfile profile) {
-        ThreadLocalRandom random = ThreadLocalRandom.current();
+    /** Center and distances for one batch: the world border is read once per batch, not three times per candidate. */
+    private record Area(double centerX, double centerZ, int minRadius, int maxRadius, boolean circle) {
+    }
+
+    private static Area area(WorldProfile profile, WorldBorder border) {
         double centerX = profile.centerX();
         double centerZ = profile.centerZ();
         int minRadius = profile.minRadius();
         int maxRadius = profile.maxRadius();
-
         if (profile.useWorldBorder()) {
-            centerX = profile.world().getWorldBorder().getCenter().getX();
-            centerZ = profile.world().getWorldBorder().getCenter().getZ();
-            int borderRadius = Math.max(1, (int) Math.floor(profile.world().getWorldBorder().getSize() / 2.0D) - 2);
+            Location center = border.getCenter();
+            centerX = center.getX();
+            centerZ = center.getZ();
+            int borderRadius = Math.max(1, (int) Math.floor(border.getSize() / 2.0D) - 2);
             maxRadius = Math.min(maxRadius, Math.max(minRadius + 1, borderRadius));
         }
+        return new Area(centerX, centerZ, minRadius, Math.max(minRadius + 1, maxRadius), "circle".equalsIgnoreCase(profile.shape()));
+    }
 
-        maxRadius = Math.max(minRadius + 1, maxRadius);
+    private Candidate candidate(Area area) {
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        double centerX = area.centerX();
+        double centerZ = area.centerZ();
+        int minRadius = area.minRadius();
+        int maxRadius = area.maxRadius();
         int x;
         int z;
 
-        if ("circle".equalsIgnoreCase(profile.shape())) {
+        if (area.circle()) {
             double minSquared = (double) minRadius * (double) minRadius;
             double maxSquared = (double) maxRadius * (double) maxRadius;
             double radius = Math.sqrt(random.nextDouble(minSquared, maxSquared + 1.0D));
@@ -313,6 +356,51 @@ public class LocationFinder {
         return (dx * dx) + (dz * dz) < (double) minDistance * (double) minDistance;
     }
 
+    private int avoidPlayersRadius() {
+        return Math.max(0, plugin.getConfig().getInt("rtp.safety.avoid-players-radius", 0));
+    }
+
+    /**
+     * Positions (x, z pairs) of the players in a world that a destination keeps away from. Spectators are left out,
+     * and so is the player asking: whoever stands within two blocks of where the request started.
+     */
+    static double[] playerPositions(World world, Location origin) {
+        try {
+            List<Player> players = world.getPlayers();
+            if (players == null || players.isEmpty()) return NO_PLAYERS;
+            double[] out = new double[players.size() * 2];
+            int size = 0;
+            boolean sameWorld = origin != null && world.equals(origin.getWorld());
+            for (Player player : players) {
+                if (player.getGameMode() == GameMode.SPECTATOR) continue;
+                Location at = player.getLocation();
+                if (at == null) continue;
+                if (sameWorld) {
+                    double dx = at.getX() - origin.getX();
+                    double dz = at.getZ() - origin.getZ();
+                    if (dx * dx + dz * dz <= 4.0D) continue;
+                }
+                out[size++] = at.getX();
+                out[size++] = at.getZ();
+            }
+            return size == out.length ? out : Arrays.copyOf(out, size);
+        } catch (RuntimeException unavailable) {
+            // Keeping away from players is a preference, never a reason to stop RTP.
+            return NO_PLAYERS;
+        }
+    }
+
+    /** True when (x, z) is closer than radius blocks to one of the positions. */
+    static boolean nearPlayer(double[] positions, double x, double z, int radius) {
+        double limit = (double) radius * radius;
+        for (int i = 0; i + 1 < positions.length; i += 2) {
+            double dx = positions[i] - x;
+            double dz = positions[i + 1] - z;
+            if (dx * dx + dz * dz < limit) return true;
+        }
+        return false;
+    }
+
     private record Candidate(int x, int z) {
     }
 
@@ -323,11 +411,17 @@ public class LocationFinder {
         private final Location origin;
         private final CompletableFuture<SearchResult> future;
         private final Map<Long, Boolean> chunkProtectionCache = new HashMap<>();
+        private final Location probe;
         // On Folia the steps of one search run one after another on different region threads.
         private volatile int attempts;
         private volatile int maxAttempts = 160;
         private volatile int inFlight;
         private volatile boolean completing;
+        private volatile int batchSize = 24;
+        private volatile boolean preferLoadedChunks = true;
+        private volatile boolean waitForPreload;
+        private volatile int avoidPlayersRadius;
+        private volatile double[] players = NO_PLAYERS;
 
         private SearchState(WorldProfile profile, SafetyRules rules, ProtectionSnapshot protection, Location origin, CompletableFuture<SearchResult> future) {
             this.profile = profile;
@@ -335,6 +429,7 @@ public class LocationFinder {
             this.protection = protection;
             this.origin = origin;
             this.future = future;
+            this.probe = new Location(profile.world(), 0, 64, 0);
         }
     }
 

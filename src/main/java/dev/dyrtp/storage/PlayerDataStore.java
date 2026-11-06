@@ -13,6 +13,8 @@ public class PlayerDataStore {
     private final DyRTP plugin;
     private final File file;
     private FileConfiguration data;
+    /** One background save at a time for RTP counts; a later count is written by the save already queued. */
+    private final java.util.concurrent.atomic.AtomicBoolean saveQueued = new java.util.concurrent.atomic.AtomicBoolean();
 
     public PlayerDataStore(DyRTP plugin) {
         this.plugin = plugin;
@@ -20,7 +22,7 @@ public class PlayerDataStore {
         reload();
     }
 
-    public void reload() {
+    public synchronized void reload() {
         if (!file.exists()) {
             try {
                 File parent = file.getParentFile();
@@ -42,11 +44,11 @@ public class PlayerDataStore {
         }
     }
 
-    public String getLanguage(UUID uuid) {
+    public synchronized String getLanguage(UUID uuid) {
         return data.getString("players." + uuid + ".language");
     }
 
-    public void setLanguage(UUID uuid, String language) {
+    public synchronized void setLanguage(UUID uuid, String language) {
         if (language == null || language.equalsIgnoreCase("auto")) {
             data.set("players." + uuid + ".language", null);
         } else {
@@ -55,7 +57,32 @@ public class PlayerDataStore {
         save();
     }
 
-    public void save() {
+    /** Successful random teleports of a player, for /dyrtp stats and %dyrtp_count%. */
+    public synchronized int rtpCount(UUID uuid) {
+        return Math.max(0, data.getInt("players." + uuid + ".rtp-count", 0));
+    }
+
+    /** Counts one successful random teleport and returns the new total; written to players.yml in the background. */
+    public synchronized int addRtp(UUID uuid) {
+        int count = rtpCount(uuid) + 1;
+        data.set("players." + uuid + ".rtp-count", count);
+        saveSoon();
+        return count;
+    }
+
+    private void saveSoon() {
+        if (!plugin.isEnabled() || !saveQueued.compareAndSet(false, true)) return;
+        try {
+            plugin.scheduler().runAsync(() -> {
+                saveQueued.set(false);
+                save();
+            });
+        } catch (RuntimeException schedulerUnavailable) {
+            saveQueued.set(false);
+        }
+    }
+
+    public synchronized void save() {
         try {
             java.nio.file.Path temporary = file.toPath().resolveSibling("players.yml.tmp");
             data.save(temporary.toFile());

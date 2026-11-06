@@ -25,6 +25,12 @@ public record WorldProfile(
         return new WorldProfile(world, useWorldBorder, centerX, centerZ, minRadius, radius, shape, minY, maxY, allowedBiomes);
     }
 
+    /** The same profile searching between two other distances, for /rtp near and /rtp far. */
+    public WorldProfile withRadii(int min, int max) {
+        int low = Math.max(0, min);
+        return new WorldProfile(world, useWorldBorder, centerX, centerZ, low, Math.max(low + 1, max), shape, minY, maxY, allowedBiomes);
+    }
+
     public static WorldProfile load(DyRTP plugin, World world) {
         ConfigurationSection defaults = plugin.getConfig().getConfigurationSection("rtp.default-world");
         ConfigurationSection custom = plugin.getConfig().getConfigurationSection("rtp.worlds." + world.getName());

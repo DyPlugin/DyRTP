@@ -106,13 +106,14 @@ public class SignPortalListener implements Listener {
         if (to == null || (from.getBlockX() == to.getBlockX() && from.getBlockY() == to.getBlockY()
                 && from.getBlockZ() == to.getBlockZ() && from.getWorld() == to.getWorld())) return;
         Player player = event.getPlayer();
-        if (!plugin.getConfig().getBoolean("portals.enabled", true) || portals.all().isEmpty()) {
-            inside.remove(player.getUniqueId());
+        // Cheapest checks first: most servers have no portals, and most players are in none.
+        if (portals.isEmpty() || !plugin.getConfig().getBoolean("portals.enabled", true)) {
+            if (!inside.isEmpty()) inside.remove(player.getUniqueId());
             return;
         }
         PortalStore.Portal portal = portals.at(to);
         if (portal == null) {
-            inside.remove(player.getUniqueId());
+            if (!inside.isEmpty()) inside.remove(player.getUniqueId());
             return;
         }
         if (portal.name().equals(inside.put(player.getUniqueId(), portal.name()))) return;

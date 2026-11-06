@@ -34,6 +34,11 @@ public final class PlaceholderHook extends PlaceholderExpansion {
 
     @Override
     public String onRequest(OfflinePlayer offline, String params) {
+        if (offline != null && "count".equalsIgnoreCase(params)) {
+            // Also works for offline players, for example on leaderboards.
+            var store = plugin.getPlayerDataStore();
+            return store == null ? "0" : String.valueOf(store.rtpCount(offline.getUniqueId()));
+        }
         Player player = offline == null ? null : offline.getPlayer();
         if (player == null || plugin.getRtpService() == null) return "";
         var rtp = plugin.getRtpService();

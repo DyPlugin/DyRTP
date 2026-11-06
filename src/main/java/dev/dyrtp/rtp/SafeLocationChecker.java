@@ -8,6 +8,19 @@ import org.bukkit.block.data.Waterlogged;
 
 public class SafeLocationChecker {
 
+    /** Ground that is never safe by its name: leaves, water and lava kinds. Worked out once instead of per block. */
+    private static final java.util.Set<Material> UNSAFE_GROUND_NAMES = materials(name -> name.endsWith("_LEAVES") || name.contains("WATER") || name.contains("LAVA"));
+    /** Space that is never safe by its name: water, lava and fire kinds. */
+    private static final java.util.Set<Material> UNSAFE_SPACE_NAMES = materials(name -> name.contains("WATER") || name.contains("LAVA") || name.contains("FIRE"));
+    /** The eight directions checked around a landing spot, scaled by the configured radius. */
+    private static final int[][] DIRECTIONS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+
+    private static java.util.Set<Material> materials(java.util.function.Predicate<String> test) {
+        java.util.Set<Material> out = java.util.EnumSet.noneOf(Material.class);
+        for (Material material : Material.values()) if (test.test(material.name())) out.add(material);
+        return out;
+    }
+
     public boolean isSafeAt(WorldProfile profile, SafetyRules rules, Location target) {
         World world = profile.world();
         if (target.getWorld() == null || !world.equals(target.getWorld())
@@ -52,6 +65,12 @@ public class SafeLocationChecker {
         if (!world.getWorldBorder().isInside(new Location(world, x + 0.5D, 64.0D, z + 0.5D))) {
             return null;
         }
+        return findSafeInsideBorder(profile, rules, x, z);
+    }
+
+    /** Like findSafe, for a column the caller already found inside the world border. */
+    Location findSafeInsideBorder(WorldProfile profile, SafetyRules rules, int x, int z) {
+        World world = profile.world();
         if (world.getEnvironment() == World.Environment.NETHER) {
             return findNether(profile, rules, x, z);
         }
@@ -110,11 +129,7 @@ public class SafeLocationChecker {
 
     private boolean unsafeGround(SafetyRules rules, Block block) {
         Material material = block.getType();
-        String name = material.name();
-        if (!material.isSolid() || rules.blacklisted(material)) {
-            return true;
-        }
-        if (name.endsWith("_LEAVES") || name.contains("WATER") || name.contains("LAVA")) {
+        if (!material.isSolid() || rules.blacklisted(material) || UNSAFE_GROUND_NAMES.contains(material)) {
             return true;
         }
         return block.getBlockData() instanceof Waterlogged waterlogged && waterlogged.isWaterlogged();
@@ -122,8 +137,7 @@ public class SafeLocationChecker {
 
     private boolean safeSpace(SafetyRules rules, Block block) {
         Material material = block.getType();
-        String name = material.name();
-        if (rules.blacklisted(material) || name.contains("WATER") || name.contains("LAVA") || name.contains("FIRE")) {
+        if (UNSAFE_SPACE_NAMES.contains(material) || rules.blacklisted(material)) {
             return false;
         }
         if (block.getBlockData() instanceof Waterlogged waterlogged && waterlogged.isWaterlogged()) {
@@ -144,19 +158,9 @@ public class SafeLocationChecker {
         }
         World world = profile.world();
         int groundY = ground.getY();
-        int[][] offsets = {
-                {radius, 0},
-                {-radius, 0},
-                {0, radius},
-                {0, -radius},
-                {radius, radius},
-                {radius, -radius},
-                {-radius, radius},
-                {-radius, -radius}
-        };
-        for (int[] offset : offsets) {
-            int nearbyX = ground.getX() + offset[0];
-            int nearbyZ = ground.getZ() + offset[1];
+        for (int[] direction : DIRECTIONS) {
+            int nearbyX = ground.getX() + direction[0] * radius;
+            int nearbyZ = ground.getZ() + direction[1] * radius;
             if (!world.isChunkLoaded(nearbyX >> 4, nearbyZ >> 4)) {
                 return true;
             }

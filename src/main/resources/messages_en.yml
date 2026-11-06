@@ -30,6 +30,9 @@ general:
   help-biome: "&a/dyrtp biome <biome> &7- Teleport to a random place in a chosen biome"
   help-group: "&a/dyrtp group <player> &7- Invite a player to travel with your next RTP"
   help-world: "&a/dyrtp world <world> &7- Teleport to a random place in another world"
+  help-near: "&a/dyrtp near|far &7- Teleport to a random place close by or far away"
+  help-back: "&a/dyrtp back &7- Return once to where you were before your last RTP"
+  help-stats: "&a/dyrtp stats &7- See how many times you used RTP"
   help-confirm: "&a/dyrtp confirm &7- Confirm your pending RTP"
   help-cancel: "&a/dyrtp cancel &7- Cancel your pending RTP"
   help-admin: "&a/dyrtp admin &7- Show administration commands"
@@ -60,6 +63,9 @@ general:
 admin:
   global-language-changed: "{prefix} &aServer language mode is now &f{language}&a."
   force-started: "{prefix} &aForced RTP started for &f{player}&a."
+  test-started: "{prefix} &7Testing a search in &f{world}&7..."
+  test-found: "{prefix} &aFound a safe spot in &f{world}&a at X: &f{x} &aY: &f{y} &aZ: &f{z}&a after &f{attempts}&a attempts in &f{ms} ms&a."
+  test-failed: "{prefix} &cNo safe spot found in &f{world}&c after &f{attempts}&c attempts in &f{ms} ms&c."
   help:
     - "&8&m----------&r &aDyRTP &fAdmin &8&m----------"
     - "&a/dyrtp admin economy <on|off> &7- Enable or disable paid teleports"
@@ -118,6 +124,20 @@ admin:
     - "&a/dyrtp admin reload &7- Reload settings and messages"
     - "&a/dyrtp admin portal <pos1|pos2|create|delete|list> &7- Manage RTP portal regions"
     - "&8&m--------------------------------"
+  help-v6:
+    - "&8&m----------&r &aDyRTP &fAdmin &8&m----------"
+    - "&a/dyrtp admin force <player> &7- Start RTP for an online player"
+    - "&a/dyrtp admin economy <on|off> &7- Enable or disable paid teleports"
+    - "&a/dyrtp admin price <cost> &7- Set the teleport price"
+    - "&a/dyrtp admin cooldown <seconds|off> &7- Set the reuse cooldown"
+    - "&a/dyrtp admin delay <seconds|off> &7- Set the delay before teleporting"
+    - "&a/dyrtp admin radius min <blocks> &7- Set the nearest RTP distance"
+    - "&a/dyrtp admin radius max <blocks> &7- Set the farthest RTP distance"
+    - "&a/dyrtp admin language <en|tr|de|es|ru|auto> &7- Set server language mode"
+    - "&a/dyrtp admin reload &7- Reload settings and messages"
+    - "&a/dyrtp admin portal <pos1|pos2|create|delete|list> &7- Manage RTP portal regions"
+    - "&a/dyrtp admin test [world] &7- Test a search and show its time and attempts"
+    - "&8&m--------------------------------"
 updates:
   available: "{prefix} &aA new DyRTP version is available: &f{latest} &7(Current: &f{current}&7) &e{url}"
 rtp:
@@ -146,6 +166,7 @@ rtp:
   world-choice-disabled: "{prefix} &cChoosing a world is turned off on this server."
   world-usage: "{prefix} &7Use &f/dyrtp world <world>&7. Worlds you can choose: &f{worlds}"
   world-unknown: "{prefix} &f{world} &cis not a world you can choose. Worlds you can choose: &f{worlds}"
+  preset-disabled: "{prefix} &cNear and far teleports are turned off on this server."
   group-brought: "{prefix} &aYour group of &f{count}&a came along."
   group-arrived: "{prefix} &aYou travelled with &f{leader}&a's group."
   group-too-far: "{prefix} &c{leader} teleported, but you were too far away to come along."
@@ -233,3 +254,13 @@ portals:
   none: "{prefix} &7There are no RTP portals yet."
   list-header: "&8&m----------&r &aDyRTP &fPortals &8&m----------"
   list-entry: "&a{name} &7- {world} &f{from} &7to &f{to} &7-> &f{target}"
+back:
+  disabled: "{prefix} &cReturning after an RTP is turned off on this server."
+  none: "{prefix} &cThere is no place to return to. It is kept only for a short time after your RTP."
+  cooldown: "{prefix} &cYou can return again in &f{time}&c."
+  returned: "{prefix} &aYou are back where you were before your RTP."
+  failed: "{prefix} &cYou could not be taken back. Try again."
+stats:
+  disabled: "{prefix} &cRTP statistics are turned off on this server."
+  self: "{prefix} &7You have used RTP &f{count}&7 times."
+  other: "{prefix} &f{player} &7has used RTP &f{count}&7 times."

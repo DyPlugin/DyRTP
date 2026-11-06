@@ -21,7 +21,7 @@ public final class WorldChoices {
     public static List<String> available(DyRTP plugin, CommandSender sender) {
         if (!enabled(plugin)) return List.of();
         List<String> configured = plugin.getConfig().getStringList("world-selection.worlds");
-        List<String> disabled = plugin.getConfig().getStringList("rtp.disabled-worlds");
+        Set<String> disabled = dev.dyrtp.util.ConfigCache.stringSet(plugin.getConfig(), "rtp.disabled-worlds");
         TreeSet<String> out = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         for (World world : Bukkit.getWorlds()) {
             String name = world.getName();

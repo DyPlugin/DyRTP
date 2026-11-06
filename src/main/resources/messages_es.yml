@@ -30,6 +30,9 @@ general:
   help-biome: "&a/dyrtp biome <biome> &7- Teletransportarte a un lugar aleatorio del bioma elegido"
   help-group: "&a/dyrtp group <jugador> &7- Invitar a un jugador a viajar en tu próximo RTP"
   help-world: "&a/dyrtp world <mundo> &7- Teletransportarte a un lugar aleatorio de otro mundo"
+  help-near: "&a/dyrtp near|far &7- Teletransportarte a un lugar aleatorio cercano o lejano"
+  help-back: "&a/dyrtp back &7- Volver una vez a donde estabas antes de tu último RTP"
+  help-stats: "&a/dyrtp stats &7- Ver cuántas veces has usado el RTP"
   help-confirm: "&a/dyrtp confirm &7- Confirmar tu RTP pendiente"
   help-cancel: "&a/dyrtp cancel &7- Cancelar tu RTP pendiente"
   help-admin: "&a/dyrtp admin &7- Mostrar los comandos de administración"
@@ -60,6 +63,9 @@ general:
 admin:
   global-language-changed: "{prefix} &aEl modo de idioma del servidor ahora es &f{language}&a."
   force-started: "{prefix} &aRTP forzado iniciado para &f{player}&a."
+  test-started: "{prefix} &7Probando una búsqueda en &f{world}&7..."
+  test-found: "{prefix} &aLugar seguro en &f{world}&a encontrado en X: &f{x} &aY: &f{y} &aZ: &f{z}&a tras &f{attempts}&a intentos en &f{ms} ms&a."
+  test-failed: "{prefix} &cNo se encontró un lugar seguro en &f{world}&c tras &f{attempts}&c intentos en &f{ms} ms&c."
   help:
     - "&8&m----------&r &aDyRTP &fAdmin &8&m----------"
     - "&a/dyrtp admin economy <on|off> &7- Activar o desactivar los teletransportes de pago"
@@ -118,6 +124,20 @@ admin:
     - "&a/dyrtp admin reload &7- Recargar configuración y mensajes"
     - "&a/dyrtp admin portal <pos1|pos2|create|delete|list> &7- Gestionar zonas de portal RTP"
     - "&8&m--------------------------------"
+  help-v6:
+    - "&8&m----------&r &aDyRTP &fAdmin &8&m----------"
+    - "&a/dyrtp admin force <player> &7- Iniciar un RTP para un jugador conectado"
+    - "&a/dyrtp admin economy <on|off> &7- Activar o desactivar los teletransportes de pago"
+    - "&a/dyrtp admin price <cost> &7- Fijar el precio del teletransporte"
+    - "&a/dyrtp admin cooldown <seconds|off> &7- Fijar la espera entre usos"
+    - "&a/dyrtp admin delay <seconds|off> &7- Fijar el retraso antes de teletransportar"
+    - "&a/dyrtp admin radius min <blocks> &7- Fijar la distancia mínima del RTP"
+    - "&a/dyrtp admin radius max <blocks> &7- Fijar la distancia máxima del RTP"
+    - "&a/dyrtp admin language <en|tr|de|es|ru|auto> &7- Fijar el modo de idioma del servidor"
+    - "&a/dyrtp admin reload &7- Recargar configuración y mensajes"
+    - "&a/dyrtp admin portal <pos1|pos2|create|delete|list> &7- Gestionar zonas de portal RTP"
+    - "&a/dyrtp admin test [world] &7- Probar una búsqueda y mostrar su tiempo e intentos"
+    - "&8&m--------------------------------"
 updates:
   available: "{prefix} &aHay una nueva versión de DyRTP: &f{latest} &7(Actual: &f{current}&7) &e{url}"
 rtp:
@@ -146,6 +166,7 @@ rtp:
   world-choice-disabled: "{prefix} &cElegir mundo está desactivado en este servidor."
   world-usage: "{prefix} &7Usa &f/dyrtp world <mundo>&7. Mundos que puedes elegir: &f{worlds}"
   world-unknown: "{prefix} &f{world} &cno es un mundo que puedas elegir. Mundos que puedes elegir: &f{worlds}"
+  preset-disabled: "{prefix} &cLos teletransportes cercanos y lejanos están desactivados en este servidor."
   group-brought: "{prefix} &aTu grupo de &f{count}&a vino contigo."
   group-arrived: "{prefix} &aViajaste con el grupo de &f{leader}&a."
   group-too-far: "{prefix} &c{leader} se teletransportó, pero estabas demasiado lejos para ir."
@@ -233,3 +254,13 @@ portals:
   none: "{prefix} &7Todavía no hay portales RTP."
   list-header: "&8&m----------&r &aDyRTP &fPortales &8&m----------"
   list-entry: "&a{name} &7- {world} &f{from} &7a &f{to} &7-> &f{target}"
+back:
+  disabled: "{prefix} &cVolver después de un RTP está desactivado en este servidor."
+  none: "{prefix} &cNo hay ningún lugar al que volver. Solo se guarda poco tiempo después de tu RTP."
+  cooldown: "{prefix} &cPodrás volver de nuevo en &f{time}&c."
+  returned: "{prefix} &aHas vuelto a donde estabas antes de tu RTP."
+  failed: "{prefix} &cNo se pudo llevarte de vuelta. Inténtalo de nuevo."
+stats:
+  disabled: "{prefix} &cLas estadísticas de RTP están desactivadas en este servidor."
+  self: "{prefix} &7Has usado el RTP &f{count}&7 veces."
+  other: "{prefix} &f{player} &7ha usado el RTP &f{count}&7 veces."

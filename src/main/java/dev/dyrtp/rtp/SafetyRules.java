@@ -28,9 +28,10 @@ public record SafetyRules(
                 Math.max(0, plugin.getConfig().getInt("rtp.safety.nearby-surface-radius", 0)),
                 Math.max(0, plugin.getConfig().getInt("rtp.safety.max-nearby-surface-drop", 8)),
                 plugin.getConfig().getBoolean("rtp.safety.require-head-room", true),
-                upperSet(plugin.getConfig().getStringList("rtp.safety.blacklisted-blocks")),
-                upperSet(plugin.getConfig().getStringList("rtp.safety.blacklisted-biomes")),
-                upperSet(profile.allowedBiomes())
+                // Cached sets: these lists are read for every search and every final check.
+                dev.dyrtp.util.ConfigCache.upperSet(plugin.getConfig(), "rtp.safety.blacklisted-blocks"),
+                dev.dyrtp.util.ConfigCache.upperSet(plugin.getConfig(), "rtp.safety.blacklisted-biomes"),
+                profile.allowedBiomes().isEmpty() ? Set.of() : upperSet(profile.allowedBiomes())
         );
     }
 

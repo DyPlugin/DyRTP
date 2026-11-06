@@ -86,11 +86,12 @@ public class PlayerEventListener implements Listener {
 
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
-        if (!plugin.getConfig().getBoolean("warmup.cancel-on-move", true)) {
-            return;
-        }
+        // Almost no player has a warmup running: check that before reading the configuration.
         Player player = event.getPlayer();
         if (!rtpService.hasPending(player)) {
+            return;
+        }
+        if (!plugin.getConfig().getBoolean("warmup.cancel-on-move", true)) {
             return;
         }
         Location start = rtpService.pendingStart(player);
@@ -108,10 +109,9 @@ public class PlayerEventListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onDamage(EntityDamageEvent event) {
-        if (!plugin.getConfig().getBoolean("warmup.cancel-on-damage", true)) {
-            return;
-        }
-        if (event.getEntity() instanceof Player player && rtpService.hasPending(player)) {
+        // Damage events fire for every entity; only players with a warmup matter.
+        if (event.getEntity() instanceof Player player && rtpService.hasPending(player)
+                && plugin.getConfig().getBoolean("warmup.cancel-on-damage", true)) {
             rtpService.cancelForDamage(player);
         }
     }
@@ -119,6 +119,7 @@ public class PlayerEventListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         cancelAutomatic(event.getPlayer());
+        rtpService.forgetPlayer(event.getPlayer());
         rtpService.groups().leave(event.getPlayer().getUniqueId());
         rtpService.cancelSilently(event.getPlayer());
     }

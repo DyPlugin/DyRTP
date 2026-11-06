@@ -30,6 +30,9 @@ general:
   help-biome: "&a/dyrtp biyom <biyom> &7- Seçtiğin biyomda rastgele bir yere ışınlan"
   help-group: "&a/dyrtp grup <oyuncu> &7- Bir oyuncuyu sonraki RTP'ne birlikte gelmeye davet et"
   help-world: "&a/dyrtp dünya <dünya> &7- Başka bir dünyada rastgele bir yere ışınlan"
+  help-near: "&a/dyrtp yakın|uzak &7- Yakında veya uzakta rastgele bir yere ışınlan"
+  help-back: "&a/dyrtp geri &7- Son RTP'nden önceki yerine bir kez dön"
+  help-stats: "&a/dyrtp istatistik &7- Kaç kez RTP kullandığını gör"
   help-confirm: "&a/dyrtp onayla &7- Bekleyen RTP isteğini onayla"
   help-cancel: "&a/dyrtp reddet &7- Bekleyen RTP isteğini iptal et"
   help-admin: "&a/dyrtp admin &7- Yönetim komutlarını göster"
@@ -60,6 +63,9 @@ general:
 admin:
   global-language-changed: "{prefix} &aSunucu dil modu &f{language}&a olarak ayarlandı."
   force-started: "{prefix} &a{player} için zorla RTP başlatıldı."
+  test-started: "{prefix} &f{world} &7dünyasında bir arama deneniyor..."
+  test-found: "{prefix} &f{world} &adünyasında güvenli yer bulundu: X: &f{x} &aY: &f{y} &aZ: &f{z}&a, &f{attempts}&a denemede, &f{ms} ms&a sürdü."
+  test-failed: "{prefix} &f{world} &cdünyasında &f{attempts}&c denemede güvenli yer bulunamadı (&f{ms} ms&c)."
   help:
     - "&8&m----------&r &aDyRTP &fYönetim &8&m----------"
     - "&a/dyrtp admin ekonomi <aç|kapat> &7- Ücretli ışınlanmayı açar veya kapatır"
@@ -118,6 +124,20 @@ admin:
     - "&a/dyrtp admin yenile &7- Ayarları ve mesajları yeniler"
     - "&a/dyrtp admin portal <konum1|konum2|oluştur|sil|liste> &7- RTP portal bölgelerini yönet"
     - "&8&m--------------------------------"
+  help-v6:
+    - "&8&m----------&r &aDyRTP &fYönetim &8&m----------"
+    - "&a/dyrtp admin zorla <oyuncu> &7- Çevrim içi oyuncu için RTP başlat"
+    - "&a/dyrtp admin ekonomi <aç|kapat> &7- Ücretli ışınlanmayı açar veya kapatır"
+    - "&a/dyrtp admin fiyat <ücret> &7- Işınlanma ücretini ayarlar"
+    - "&a/dyrtp admin bekleme <saniye|kapalı> &7- Tekrar kullanım süresini ayarlar"
+    - "&a/dyrtp admin gecikme <saniye|kapalı> &7- Işınlanma öncesi bekleme süresini ayarlar"
+    - "&a/dyrtp admin sınır enyakın <blok> &7- En yakın RTP mesafesini ayarlar"
+    - "&a/dyrtp admin sınır enuzak <blok> &7- En uzak RTP mesafesini ayarlar"
+    - "&a/dyrtp admin dil <en|tr|de|es|ru|oto> &7- Sunucu dil modunu ayarlar"
+    - "&a/dyrtp admin yenile &7- Ayarları ve mesajları yeniler"
+    - "&a/dyrtp admin portal <konum1|konum2|oluştur|sil|liste> &7- RTP portal bölgelerini yönet"
+    - "&a/dyrtp admin test [dünya] &7- Bir arama dener, süresini ve deneme sayısını gösterir"
+    - "&8&m--------------------------------"
 updates:
   available: "{prefix} &aYeni DyRTP sürümü mevcut: &f{latest} &7(Kurulu: &f{current}&7) &e{url}"
 rtp:
@@ -146,6 +166,7 @@ rtp:
   world-choice-disabled: "{prefix} &cBu sunucuda dünya seçimi kapalı."
   world-usage: "{prefix} &f/dyrtp dünya <dünya> &7kullan. Seçebileceğin dünyalar: &f{worlds}"
   world-unknown: "{prefix} &f{world} &cseçebileceğin bir dünya değil. Seçebileceğin dünyalar: &f{worlds}"
+  preset-disabled: "{prefix} &cBu sunucuda yakın ve uzak ışınlanma kapalı."
   group-brought: "{prefix} &f{count}&a kişilik grubun da seninle geldi."
   group-arrived: "{prefix} &f{leader}&a ve grubuyla birlikte ışınlandın."
   group-too-far: "{prefix} &c{leader} ışınlandı ama sen birlikte gelmek için çok uzaktaydın."
@@ -233,3 +254,13 @@ portals:
   none: "{prefix} &7Henüz RTP portalı yok."
   list-header: "&8&m----------&r &aDyRTP &fPortallar &8&m----------"
   list-entry: "&a{name} &7- {world} &f{from} &7ile &f{to} &7arası -> &f{target}"
+back:
+  disabled: "{prefix} &cBu sunucuda RTP sonrası geri dönme kapalı."
+  none: "{prefix} &cDönebileceğin bir yer yok. Bu yer RTP'den sonra yalnızca kısa bir süre saklanır."
+  cooldown: "{prefix} &f{time} &csonra tekrar geri dönebilirsin."
+  returned: "{prefix} &aRTP'den önceki yerine döndün."
+  failed: "{prefix} &cGeri götürülemedin. Tekrar dene."
+stats:
+  disabled: "{prefix} &cBu sunucuda RTP istatistikleri kapalı."
+  self: "{prefix} &7RTP'yi &f{count}&7 kez kullandın."
+  other: "{prefix} &f{player} &7RTP'yi &f{count}&7 kez kullandı."

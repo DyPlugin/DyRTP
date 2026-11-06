@@ -17,7 +17,10 @@ public class PortalStore {
     public record Portal(String name, String world, int minX, int minY, int minZ, int maxX, int maxY, int maxZ, String target) {
         public boolean contains(Location location) {
             if (location.getWorld() == null || !location.getWorld().getName().equals(world)) return false;
-            int x = location.getBlockX(), y = location.getBlockY(), z = location.getBlockZ();
+            return containsBlock(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        }
+
+        public boolean containsBlock(int x, int y, int z) {
             return x >= minX && x <= maxX && y >= minY && y <= maxY && z >= minZ && z <= maxZ;
         }
 
@@ -35,6 +38,8 @@ public class PortalStore {
     private final DyRTP plugin;
     private final File file;
     private volatile List<Portal> portals = List.of();
+    /** Portals by world name, so a movement check only looks at the portals of the player's world. */
+    private volatile Map<String, List<Portal>> byWorld = Map.of();
 
     public PortalStore(DyRTP plugin) {
         this.plugin = plugin;
@@ -44,7 +49,7 @@ public class PortalStore {
 
     public void reload() {
         if (!file.exists()) {
-            portals = List.of();
+            use(List.of());
             return;
         }
         try {
@@ -58,7 +63,7 @@ public class PortalStore {
                 loaded.add(new Portal(name, p.getString("world"), p.getInt("min.x"), p.getInt("min.y"), p.getInt("min.z"),
                         p.getInt("max.x"), p.getInt("max.y"), p.getInt("max.z"), p.getString("target", "")));
             }
-            portals = List.copyOf(loaded);
+            use(List.copyOf(loaded));
         } catch (Exception exception) {
             plugin.getLogger().warning("Could not load portals.yml; portals kept as they were: " + exception.getMessage());
         }
@@ -68,9 +73,27 @@ public class PortalStore {
         return portals;
     }
 
+    public boolean isEmpty() {
+        return portals.isEmpty();
+    }
+
     public Portal at(Location location) {
-        for (Portal portal : portals) if (portal.contains(location)) return portal;
+        org.bukkit.World world = location.getWorld();
+        if (world == null) return null;
+        List<Portal> inWorld = byWorld.get(world.getName());
+        if (inWorld == null) return null;
+        int x = location.getBlockX(), y = location.getBlockY(), z = location.getBlockZ();
+        for (Portal portal : inWorld) if (portal.containsBlock(x, y, z)) return portal;
         return null;
+    }
+
+    private void use(List<Portal> next) {
+        Map<String, List<Portal>> index = new HashMap<>();
+        for (Portal portal : next) index.computeIfAbsent(portal.world(), name -> new ArrayList<>()).add(portal);
+        index.replaceAll((name, list) -> List.copyOf(list));
+        // The index is published before the list, so a reader that sees a portal in all() also finds it in at().
+        byWorld = Map.copyOf(index);
+        portals = next;
     }
 
     public Portal get(String name) {
@@ -114,7 +137,7 @@ public class PortalStore {
             } catch (java.nio.file.AtomicMoveNotSupportedException exception) {
                 java.nio.file.Files.move(temporary, file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
-            portals = List.copyOf(next);
+            use(List.copyOf(next));
             return true;
         } catch (java.io.IOException exception) {
             plugin.getLogger().warning("Could not save portals.yml: " + exception.getMessage());

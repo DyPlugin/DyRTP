@@ -6,6 +6,7 @@ import dev.dyrtp.lang.MessageService;
 import dev.dyrtp.protection.HookStatus;
 import dev.dyrtp.protection.ProtectionService;
 import dev.dyrtp.rtp.BiomeChoices;
+import dev.dyrtp.rtp.DistancePreset;
 import dev.dyrtp.rtp.RtpCause;
 import dev.dyrtp.rtp.RtpService;
 import dev.dyrtp.rtp.WorldChoices;
@@ -93,6 +94,18 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         if (matches(args[0], "world", "dünya", "dunya")) {
             return world(sender, args.length > 1 ? args[1] : null);
         }
+        if (matches(args[0], "near", "yakın", "yakin")) {
+            return preset(sender, DistancePreset.NEAR);
+        }
+        if (matches(args[0], "far", "uzak")) {
+            return preset(sender, DistancePreset.FAR);
+        }
+        if (matches(args[0], "back", "return", "geri", "dön", "don")) {
+            return back(sender);
+        }
+        if (matches(args[0], "stats", "statistics", "istatistik", "istatistikler")) {
+            return stats(sender, args);
+        }
         if (args.length == 1 && WorldChoices.match(plugin, sender, args[0]) != null) {
             return world(sender, args[0]);
         }
@@ -166,6 +179,115 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         rtpService.request(player, RtpCause.COMMAND, null, world);
+        return true;
+    }
+
+    /** /dyrtp near and /dyrtp far: a search between the distances in distance-presets. */
+    private boolean preset(CommandSender sender, String name) {
+        if (!(sender instanceof Player player)) {
+            messages.send(sender, "general.player-only");
+            return true;
+        }
+        if (!sender.hasPermission("dyrtp.use")) {
+            messages.send(sender, "general.no-permission");
+            return true;
+        }
+        DistancePreset preset = DistancePreset.load(plugin, name);
+        if (preset == null) {
+            messages.send(sender, "rtp.preset-disabled");
+            return true;
+        }
+        if (!sender.hasPermission(preset.permission())) {
+            messages.send(sender, "general.no-permission");
+            return true;
+        }
+        rtpService.request(player, RtpCause.COMMAND, preset);
+        return true;
+    }
+
+    /** /dyrtp back: once, to where the player stood before their last RTP. */
+    private boolean back(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            messages.send(sender, "general.player-only");
+            return true;
+        }
+        if (!sender.hasPermission("dyrtp.use") || !sender.hasPermission("dyrtp.back")) {
+            messages.send(sender, "general.no-permission");
+            return true;
+        }
+        switch (rtpService.back(player)) {
+            case DISABLED -> messages.send(sender, "back.disabled");
+            case NONE -> messages.send(sender, "back.none");
+            case BUSY -> messages.send(sender, "rtp.already-running");
+            case COOLDOWN -> messages.send(sender, "back.cooldown",
+                    Map.of("{time}", rtpService.formatCooldown(player, rtpService.backCooldown(player))));
+            case STARTED -> { }
+        }
+        return true;
+    }
+
+    /** /dyrtp stats [player]: how many successful random teleports a player made. */
+    private boolean stats(CommandSender sender, String[] args) {
+        if (!plugin.getConfig().getBoolean("stats.enabled", false)) {
+            messages.send(sender, "stats.disabled");
+            return true;
+        }
+        if (args.length > 1) {
+            if (!sender.hasPermission("dyrtp.stats.others")) {
+                messages.send(sender, "general.no-permission");
+                return true;
+            }
+            Player target = Bukkit.getPlayerExact(args[1]);
+            if (target == null) {
+                messages.send(sender, "general.player-not-found", Map.of("{player}", args[1]));
+                return true;
+            }
+            messages.send(sender, "stats.other", Map.of("{player}", target.getName(),
+                    "{count}", String.valueOf(playerDataStore.rtpCount(target.getUniqueId()))));
+            return true;
+        }
+        if (!(sender instanceof Player player)) {
+            messages.send(sender, "general.player-only");
+            return true;
+        }
+        if (!sender.hasPermission("dyrtp.stats")) {
+            messages.send(sender, "general.no-permission");
+            return true;
+        }
+        messages.send(sender, "stats.self", Map.of("{count}", String.valueOf(playerDataStore.rtpCount(player.getUniqueId()))));
+        return true;
+    }
+
+    /** /dyrtp admin test [world]: runs one search and reports how long it took; nobody is teleported. */
+    private boolean test(CommandSender sender, String[] args) {
+        org.bukkit.World world;
+        if (args.length > 2) world = Bukkit.getWorld(args[2]);
+        else if (sender instanceof Player player) world = player.getWorld();
+        else world = Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0);
+        if (world == null) {
+            messages.send(sender, "signs.unknown-world", Map.of("{world}", args.length > 2 ? args[2] : "-"));
+            return true;
+        }
+        String name = world.getName();
+        messages.send(sender, "admin.test-started", Map.of("{world}", name));
+        long started = System.nanoTime();
+        rtpService.testSearch(world).whenComplete((result, error) -> {
+            String millis = String.valueOf((System.nanoTime() - started) / 1_000_000L);
+            Runnable report = () -> {
+                if (error == null && result != null && result.location() != null) {
+                    org.bukkit.Location at = result.location();
+                    messages.send(sender, "admin.test-found", Map.of("{world}", name, "{x}", String.valueOf(at.getBlockX()),
+                            "{y}", String.valueOf(at.getBlockY()), "{z}", String.valueOf(at.getBlockZ()),
+                            "{attempts}", String.valueOf(result.attempts()), "{ms}", millis));
+                } else {
+                    messages.send(sender, "admin.test-failed", Map.of("{world}", name,
+                            "{attempts}", String.valueOf(result == null ? 0 : result.attempts()), "{ms}", millis));
+                }
+            };
+            // Folia: a player hears back on their own thread, the console on the global one.
+            if (sender instanceof Player player) plugin.scheduler().runFor(player, report);
+            else plugin.scheduler().runMain(report);
+        });
         return true;
     }
 
@@ -390,6 +512,15 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             if (sender.hasPermission("dyrtp.use") && !WorldChoices.available(plugin, sender).isEmpty()) {
                 messages.send(sender, "general.help-world");
             }
+            if (presetChoice(sender, DistancePreset.NEAR) || presetChoice(sender, DistancePreset.FAR)) {
+                messages.send(sender, "general.help-near");
+            }
+            if (backChoice(sender)) {
+                messages.send(sender, "general.help-back");
+            }
+            if (statsChoice(sender)) {
+                messages.send(sender, "general.help-stats");
+            }
             messages.send(sender, "general.help-language");
         }
         if (sender.hasPermission("dyrtp.admin")) {
@@ -403,7 +534,7 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length < 2 || matches(args[1], "help", "yardım", "yardim")) {
-            for (String line : messages.getList(sender, "admin.help-v5")) {
+            for (String line : messages.getList(sender, "admin.help-v6")) {
                 sender.sendMessage(line);
             }
             return true;
@@ -442,6 +573,9 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         }
         if (matches(sub, "portal", "portallar")) {
             return portal(sender, args);
+        }
+        if (matches(sub, "test", "dene")) {
+            return test(sender, args);
         }
 
         messages.send(sender, "general.unknown-command");
@@ -709,7 +843,11 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
                     if (biomeChoice(sender)) words.add(tr ? "biyom" : "biome");
                     if (sender.hasPermission("dyrtp.group") && rtpService.groups().enabled()) words.add(tr ? "grup" : "group");
                     if (!WorldChoices.available(plugin, sender).isEmpty()) words.add(tr ? "dünya" : "world");
+                    if (presetChoice(sender, DistancePreset.NEAR)) words.add(tr ? "yakın" : "near");
+                    if (presetChoice(sender, DistancePreset.FAR)) words.add(tr ? "uzak" : "far");
+                    if (backChoice(sender)) words.add(tr ? "geri" : "back");
                 }
+                if (statsChoice(sender)) words.add(tr ? "istatistik" : "stats");
             }
             if (sender.hasPermission("dyrtp.admin")) words.add("admin");
             return startsWith(args[0], words);
@@ -718,6 +856,10 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
             List<String> words = new ArrayList<>(tr ? List.of("katil", "reddet", "ayril") : List.of("join", "decline", "leave"));
             Bukkit.getOnlinePlayers().stream().filter(online -> !online.equals(sender)).map(Player::getName).forEach(words::add);
             return startsWith(args[1], words);
+        }
+        if (args.length == 2 && matches(args[0], "stats", "statistics", "istatistik", "istatistikler")
+                && sender.hasPermission("dyrtp.stats.others") && plugin.getConfig().getBoolean("stats.enabled", false)) {
+            return startsWith(args[1], Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());
         }
         if (args.length == 2 && matches(args[0], "world", "dünya", "dunya")) {
             return sender.hasPermission("dyrtp.use") ? startsWith(args[1], WorldChoices.available(plugin, sender)) : List.of();
@@ -736,8 +878,11 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 2) {
             return startsWith(args[1], tr
-                    ? List.of("yardım", "yenile", "dil", "ekonomi", "fiyat", "bekleme", "gecikme", "sınır", "zorla", "portal")
-                    : List.of("help", "reload", "language", "economy", "price", "cooldown", "delay", "radius", "force", "portal"));
+                    ? List.of("yardım", "yenile", "dil", "ekonomi", "fiyat", "bekleme", "gecikme", "sınır", "zorla", "portal", "test")
+                    : List.of("help", "reload", "language", "economy", "price", "cooldown", "delay", "radius", "force", "portal", "test"));
+        }
+        if (args.length == 3 && matches(args[1], "test", "dene")) {
+            return startsWith(args[2], Bukkit.getWorlds().stream().map(org.bukkit.World::getName).toList());
         }
         if (args.length == 3 && matches(args[1], "portal", "portallar")) {
             return startsWith(args[2], tr ? List.of("konum1", "konum2", "oluştur", "sil", "liste")
@@ -804,6 +949,20 @@ public class DyRtpCommand implements CommandExecutor, TabCompleter {
     private boolean biomeChoice(CommandSender sender) {
         return sender instanceof Player && sender.hasPermission("dyrtp.use") && sender.hasPermission("dyrtp.biome")
                 && plugin.getConfig().getBoolean("biome-selection.enabled", true);
+    }
+
+    private boolean presetChoice(CommandSender sender, String name) {
+        return sender instanceof Player && sender.hasPermission("dyrtp.use") && sender.hasPermission("dyrtp." + name)
+                && DistancePreset.enabled(plugin);
+    }
+
+    private boolean backChoice(CommandSender sender) {
+        return sender instanceof Player && sender.hasPermission("dyrtp.use") && sender.hasPermission("dyrtp.back")
+                && plugin.getConfig().getBoolean("back.enabled", false);
+    }
+
+    private boolean statsChoice(CommandSender sender) {
+        return sender instanceof Player && sender.hasPermission("dyrtp.stats") && plugin.getConfig().getBoolean("stats.enabled", false);
     }
 
     private static List<String> languageChoices(boolean turkish) {
