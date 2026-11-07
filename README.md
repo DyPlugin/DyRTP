@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/images/logo.png" alt="DyRTP logo" width="128"></p>
+
 # DyRTP — Random Teleportation Made Simple
 
 **Find new places. Choose your worlds. Keep exploring.**
