@@ -46,7 +46,7 @@ public class RenderChart {
         text(150,254,"Same settings. Measured RTP.",68,INK,true,false);
         text(150,356,"Lower median time in these samples.",64,GREEN,true,false);
         text(150,454,"Command-to-teleport time. Lower is faster.",34,MUTED,false,false);
-        rect(150,523,26,26,GREEN);text(190,518,"DyRTP 1.1.0",30,INK,true,false);
+        rect(150,523,26,26,GREEN);text(190,518,"DyRTP 1.4.0",30,INK,true,false);
         rect(515,523,26,26,GRAY);text(555,518,"BetterRTP 3.6.13",30,INK,false,false);
         text(1850,520,"MEDIAN · ms",28,MUTED,false,true);
         int left=150;double plot=1450,maximum=200.0;
@@ -67,7 +67,7 @@ public class RenderChart {
         text(150,1497,"Median samples: 10–20 requests per scenario. Random destinations; not CPU/RAM usage.",25,MUTED,false,false);
         text(150,1540,"Flat Overworld; results are not a general performance or safety guarantee. Method and p95 in the report.",25,MUTED,false,false);
         text(150,1620,"modrinth.com/plugin/dyrtp",28,INK,true,false);
-        text(1850,1624,"24.10.2026",24,MUTED,false,true);
+        text(1850,1624,"07.11.2026",24,MUTED,false,true);
         svg.add("</svg>");g.dispose();
         Path output=project.resolve("docs/images");Files.createDirectories(output);
         ImageIO.write(image,"png",output.resolve("DyRTP-vs-BetterRTP-en.png").toFile());

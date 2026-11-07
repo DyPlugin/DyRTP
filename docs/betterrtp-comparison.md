@@ -1,10 +1,56 @@
-# DyRTP 1.1.0 versus BetterRTP 3.6.13
+# DyRTP 1.4.0 versus BetterRTP 3.6.13
 
-Measured on 2026-10-24 with the same harness, world snapshot, settings and client as the 1.0.1 comparison below, so the two releases are measured the same way. These measurements do not establish a universal performance or safety winner.
+Measured on 2026-11-07 with the same harness, world snapshot, settings script, probe and client library as the 1.1.0 and 1.0.1 comparisons below. These measurements do not establish a universal performance or safety winner.
 
 ![Median command-to-teleport time across five matched-setting samples](images/DyRTP-vs-BetterRTP-en.png)
 
 The chart uses one shared 0–200 ms linear scale. Green represents DyRTP; gray represents BetterRTP. An [editable SVG](images/DyRTP-vs-BetterRTP-en.svg) is included.
+
+## Artifacts and environment
+
+- DyRTP 1.4.0: 242,592 bytes, SHA-256 `158C2F6928119F3A07AA7D307B3ECC13083042D028480049CF19AF8DD39D21B0`.
+- BetterRTP 3.6.13: downloaded again from the Spiget mirror of Spigot resource 36081; 496,799 bytes, SHA-256 `960C49CB7C9A03F31D2DD751F83A78479B3465BCB5EB65789B19874E13D503F2`, identical to the earlier runs.
+- Paper 26.1.2 build 74 (SHA-256 `1D70B1DAB9CF4A6DE615209A536F3A45A2186240253C428213CE2188AB95E5F7`), Oracle Java 25.0.4.1, Windows 11, `-Xms256M -Xmx768M`, localhost port 25579, minecraft-protocol 1.68.0 as the non-OP client.
+
+## Method
+
+The common methodology below applies unchanged: each plugin ran alone on a fresh copy of the saved `snapshot/benchmark` world with the same phase order (small first pass, small second pass, larger first pass, Nether, End) and a 15-second pause after each scenario. The settings files were written again with `configure.py` from DyRTP 1.4.0's bundled configuration and BetterRTP 3.6.13's bundled configuration, because the earlier temporary copies had been cleaned up. DyRTP's ready spots (`rtp.queue.size`, added in 1.2.0) were set to 0, matching BetterRTP's disabled queue, so both plugins searched live. The run was automated by `bench.cjs` and finished without any excluded attempt.
+
+## Results
+
+| Scenario | Requests each | DyRTP median / p95 ms | BetterRTP median / p95 ms |
+| --- | ---: | ---: | ---: |
+| Overworld 16–96 first pass | 20 | 1.470 / 2.312 | 100.380 / 102.112 |
+| Overworld 16–96 second pass | 20 | 0.932 / 1.308 | 99.962 / 101.319 |
+| Overworld 500–1000 first pass | 10 | 53.716 / 116.532 | 122.336 / 178.024 |
+| Nether 16–96 | 10 | 1.593 / 99.348 | 99.589 / 200.520 |
+| End 16–96 | 10 | 1.035 / 61.218 | 100.468 / 200.137 |
+
+Each plugin completed 70 requests with zero timeouts, zero arrival failures and zero basic landing check failures. Ten-sample p95 equals the sample maximum. DyRTP had the lower median and the lower p95 in all five scenarios.
+
+| Scenario | DyRTP arrival failures / basic check failures | BetterRTP arrival failures / basic check failures |
+| --- | ---: | ---: |
+| Overworld 16–96 first pass | 0 / 0 | 0 / 0 |
+| Overworld 16–96 second pass | 0 / 0 | 0 / 0 |
+| Overworld 500–1000 first pass | 0 / 0 | 0 / 0 |
+| Nether 16–96 | 0 / 0 | 0 / 0 |
+| End 16–96 | 0 / 0 | 0 / 0 |
+
+| Scenario | DyRTP chunk loads / new chunks | BetterRTP chunk loads / new chunks |
+| --- | ---: | ---: |
+| Overworld 16–96 first pass | 162 / 159 | 284 / 282 |
+| Overworld 16–96 second pass | 230 / 78 | 261 / 15 |
+| Overworld 500–1000 first pass | 587 / 451 | 559 / 499 |
+| Nether 16–96 | 210 / 197 | 241 / 238 |
+| End 16–96 | 374 / 371 | 374 / 371 |
+
+Chunk loads are server-wide counts for each scenario. Compared with the 1.1.0 run on this host, DyRTP's larger first pass went from 76.25 to 53.716 ms median, while BetterRTP went from 127.49 to 122.336 ms. Host variance cannot be fully separated with these sample sizes.
+
+---
+
+# Historical record: DyRTP 1.1.0 versus BetterRTP 3.6.13
+
+Measured on 2026-10-24.
 
 ## Artifacts and environment
 
@@ -18,13 +64,13 @@ The common methodology below applies unchanged. Each plugin ran alone on its own
 
 ## Results
 
-| Scenario | Requests each | DyRTP median / p95 ms | BetterRTP median / p95 ms |
+| Scenario | Requests each | DyRTP 1.1.0 median ms | BetterRTP median ms |
 | --- | ---: | ---: | ---: |
-| Overworld 16–96 first pass | 20 | 2.218 / 4.868 | 100.504 / 135.158 |
-| Overworld 16–96 second pass | 20 | 1.665 / 3.409 | 100.248 / 101.677 |
-| Overworld 500–1000 first pass | 10 | 76.250 / 198.867 | 127.491 / 288.575 |
-| Nether 16–96 | 10 | 1.672 / 43.401 | 100.892 / 201.353 |
-| End 16–96 | 10 | 1.343 / 2.315 | 99.924 / 350.287 |
+| Overworld 16–96 first pass | 20 | 2.218 (p95 4.868) | 100.504 (p95 135.158) |
+| Overworld 16–96 second pass | 20 | 1.665 (p95 3.409) | 100.248 (p95 101.677) |
+| Overworld 500–1000 first pass | 10 | 76.250 (p95 198.867) | 127.491 (p95 288.575) |
+| Nether 16–96 | 10 | 1.672 (p95 43.401) | 100.892 (p95 201.353) |
+| End 16–96 | 10 | 1.343 (p95 2.315) | 99.924 (p95 350.287) |
 
 Each plugin completed 70 requests with zero timeouts, zero arrival failures and zero basic landing check failures. Ten-sample p95 equals the sample maximum. DyRTP had the lower median in all five scenarios and the lower p95 in all five.
 
@@ -77,7 +123,7 @@ Basic landing checks cover solid non-blacklisted ground, feet/head clearance and
 
 ## Final artifact results
 
-The chart at the top of this report now shows the 1.1.0 run.
+The chart at the top of this report now shows the 1.4.0 run.
 
 | Scenario | Requests each | DyRTP 1.0.1 median ms | BetterRTP median ms |
 | --- | ---: | ---: | ---: |

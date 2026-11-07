@@ -96,7 +96,7 @@ Java 17 bytecode; use the runtime required by your server. Minecraft 1.20.x–26
 
 ![DyRTP and BetterRTP median command-to-teleport time across five scenarios](docs/images/DyRTP-vs-BetterRTP-en.png)
 
-Measured with DyRTP 1.1.0 on Paper 26.1.2 with one non-OP client: DyRTP had the lower observed median in all five matched-setting samples. Each plugin completed 70 requests. These are command-to-teleport durations, not CPU/RAM measurements, and do not establish a universal speed or safety advantage. Protection and economy were disabled for the timing comparison.
+Measured with DyRTP 1.4.0 on Paper 26.1.2 with one non-OP client: DyRTP had the lower observed median and p95 in all five matched-setting samples. Each plugin completed 70 requests. These are command-to-teleport durations, not CPU/RAM measurements, and do not establish a universal speed or safety advantage. Protection and economy were disabled for the timing comparison.
 
 [Method, results and limitations](docs/betterrtp-comparison.md)
 
